@@ -170,6 +170,7 @@ impl AUTD {
     }
 
     pub fn stop(&mut self) {
+        self.finish_stm();
         self.append_gain_sync(NullGain::create());
     }
 
