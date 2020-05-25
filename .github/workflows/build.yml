@@ -1,0 +1,31 @@
+name: build
+
+on:
+  push:
+    tags-ignore:
+      - v*
+    branches:
+      - '*'
+
+jobs:
+  build:
+    name: build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: lint
+      run: cargo clippy --all-targets --all-features -- -D warnings

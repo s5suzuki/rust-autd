@@ -1,6 +1,6 @@
 [package]
 name = "autd"
-version = "4.0.0"
+version = "4.1.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -14,8 +14,3 @@ autd-core = "4"
 autd-timer = "1.2"
 autd-geometry = "1"
 num = "0.2"
-
-[dev-dependencies]
-colored = "1.9"
-autd-soem-link = "4"
-autd-twincat-link = "4"
