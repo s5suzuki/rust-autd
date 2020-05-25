@@ -4,6 +4,15 @@ version = "4.1.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
+license = "MIT"
+description = "AUTD library for Rust."
+repository = "https://github.com/sssssssuzuki/rust-autd"
+readme = "README.md"
+keywords = ["autd"]
+exclude = [
+    ".github/*",
+]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
