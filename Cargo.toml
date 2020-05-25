@@ -14,3 +14,6 @@ autd-core = "4"
 autd-timer = "1.2"
 autd-geometry = "1"
 num = "0.2"
+
+[dev-dependencies]
+autd-soem-link = "4"
