@@ -406,7 +406,7 @@ impl AUTD {
                 let mut gain_q = build_lk.lock().unwrap();
                 let gain = match gain_q.pop_front() {
                     None => {
-                        let _ = build_cvar.wait(gain_q).unwrap();
+                        let _q = build_cvar.wait(gain_q).unwrap();
                         continue;
                     }
                     Some(mut gain) => {
@@ -448,7 +448,7 @@ impl AUTD {
                     send_buf.modulation_q.get_mut(0),
                 ) {
                     (None, None) => {
-                        let _ = send_cvar.wait(send_buf).unwrap();
+                        let _q = send_cvar.wait(send_buf).unwrap();
                     }
                     (Some(g), None) => {
                         let dev_num = geometry.lock().unwrap().num_devices();
