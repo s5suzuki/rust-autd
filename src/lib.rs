@@ -4,7 +4,7 @@
  * Created Date: 02/09/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 25/05/2020
+ * Last Modified: 30/06/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -26,6 +26,7 @@ use autd_gain::Gain;
 use autd_geometry::Geometry;
 use autd_link::Link;
 use autd_modulation::Modulation;
+use autd_sequence::PointSequence;
 use autd_timer::Timer;
 
 use crate::prelude::*;
@@ -121,16 +122,21 @@ impl AUTD {
         };
     }
 
+    pub fn clear(&mut self) -> Result<bool, Box<dyn Error>> {
+        let header = Self::make_header(CommandType::CmdClear);
+        let dev_num = self.geometry().num_devices();
+        self.send(header);
+        let result = self.wait_msg_processed(dev_num, CommandType::CmdClear as u8, 0xFF, 200);
+        Ok(result)
+    }
+
     pub fn calibrate(&mut self) -> Result<bool, Box<dyn Error>> {
-        let link = match &self.link {
-            Some(link) => link.clone(),
-            None => return Ok(false),
-        };
-        if self.geometry().num_devices() == 1 || self.geometry().num_devices() == 0 {
-            return Ok(true);
-        }
-        let mut l = (&*link).lock().unwrap();
-        l.calibrate()
+        let header = Self::make_header(CommandType::CmdInitRefClock);
+        let dev_num = self.geometry().num_devices();
+        self.send(header);
+        let result =
+            self.wait_msg_processed(dev_num, CommandType::CmdInitRefClock as u8, 0xFF, 5000);
+        Ok(result)
     }
 
     pub fn close(mut self) {
@@ -195,7 +201,7 @@ impl AUTD {
         let (msg_id, body) = AUTD::make_body(Some(gain), None, dev_num, is_silent);
         self.send(body);
         if wait_for_send {
-            self.wait_msg_processed(msg_id, 200);
+            self.wait_msg_processed(dev_num, msg_id, 0xFF, 200);
         }
     }
 
@@ -215,10 +221,91 @@ impl AUTD {
             let is_silent = self.is_silent();
             let (msg_id, body) = AUTD::make_body(None, Some(&mut modulation), dev_num, is_silent);
             self.send(body);
-            self.wait_msg_processed(msg_id, 200);
+            self.wait_msg_processed(dev_num, msg_id, 0xFF, 200);
         }
     }
 
+    pub fn flush(&mut self) {
+        let (build_lk, _) = &*self.build_gain_q;
+        {
+            let mut build_q = build_lk.lock().unwrap();
+            build_q.clear();
+        }
+        let (send_lk, _) = &*self.send_gain_q;
+        {
+            let mut send_q = send_lk.lock().unwrap();
+            send_q.gain_q.clear();
+            send_q.modulation_q.clear();
+        }
+    }
+
+    pub fn firmware_info_list(&mut self) -> Vec<FirmwareInfo> {
+        let size = self.geometry().num_devices();
+
+        let mut cpu_versions: Vec<u16> = vec![0x0000; size];
+        let mut fpga_versions: Vec<u16> = vec![0x0000; size];
+
+        let header = Self::make_header(CommandType::CmdReadCpuVerLsb);
+        self.send(header);
+
+        self.wait_msg_processed(size, CommandType::CmdReadCpuVerLsb as u8, 0xFF, 50);
+        let rx_data = match &self.rx_data {
+            Some(d) => d,
+            None => return vec![],
+        };
+
+        for i in 0..size {
+            cpu_versions[i] = rx_data[2 * i] as u16;
+        }
+
+        let header = Self::make_header(CommandType::CmdReadCpuVerMsb);
+        self.send(header);
+
+        self.wait_msg_processed(size, CommandType::CmdReadCpuVerMsb as u8, 0xFF, 50);
+        let rx_data = match &self.rx_data {
+            Some(d) => d,
+            None => return vec![],
+        };
+        for i in 0..size {
+            cpu_versions[i] |= (rx_data[2 * i] as u16) << 8;
+        }
+
+        let header = Self::make_header(CommandType::CmdReadFpgaVerLsb);
+        self.send(header);
+
+        self.wait_msg_processed(size, CommandType::CmdReadFpgaVerLsb as u8, 0xFF, 50);
+        let rx_data = match &self.rx_data {
+            Some(d) => d,
+            None => return vec![],
+        };
+        for i in 0..size {
+            fpga_versions[i] = rx_data[2 * i] as u16;
+        }
+
+        let header = Self::make_header(CommandType::CmdReadFpgaVerMsb);
+        self.send(header);
+
+        self.wait_msg_processed(size, CommandType::CmdReadFpgaVerMsb as u8, 0xFF, 50);
+        let rx_data = match &self.rx_data {
+            Some(d) => d,
+            None => return vec![],
+        };
+        for i in 0..size {
+            fpga_versions[i] |= (rx_data[2 * i] as u16) << 8;
+        }
+
+        let mut res = Vec::with_capacity(size);
+        for i in 0..size {
+            let firm_info = FirmwareInfo::new(i as u16, cpu_versions[i], fpga_versions[i]);
+            res.push(firm_info);
+        }
+
+        res
+    }
+}
+
+// Software STM
+impl AUTD {
     pub fn append_stm_gains(&mut self, gains: Vec<GainPtr>) {
         self.stop_stm();
         let mut stm_gains = self.stm_gains.lock().unwrap();
@@ -277,94 +364,150 @@ impl AUTD {
         let mut stm_gains = self.stm_gains.lock().unwrap();
         stm_gains.clear();
     }
+}
 
-    pub fn flush(&mut self) {
-        let (build_lk, _) = &*self.build_gain_q;
-        {
-            let mut build_q = build_lk.lock().unwrap();
-            build_q.clear();
+// Point Sequence
+impl AUTD {
+    pub fn append_sequence(&mut self, seq: PointSequence) {
+        let mut seq = seq;
+        let is_silent = self.is_silent();
+        let dev_num = self.geometry().num_devices();
+        while seq.sent() < seq.control_points().len() {
+            let (msg_id, body) = AUTD::make_seq_body(&mut seq, &self.geometry(), is_silent);
+            self.send(body);
+            if seq.sent() == seq.control_points().len() {
+                self.wait_msg_processed(dev_num, 0xC0, 0xE0, 200);
+            } else {
+                self.wait_msg_processed(dev_num, msg_id, 0xFF, 200);
+            }
         }
-        let (send_lk, _) = &*self.send_gain_q;
-        {
-            let mut send_q = send_lk.lock().unwrap();
-            send_q.gain_q.clear();
-            send_q.modulation_q.clear();
-        }
+        self.calibrate_seq();
     }
 
-    pub fn firmware_info_list(&mut self) -> Vec<FirmwareInfo> {
-        let size = self.geometry().num_devices();
+    fn calibrate_seq(&mut self) {
+        let rx_data = match &self.rx_data {
+            Some(d) => d,
+            None => return,
+        };
+        let mut laps = Vec::with_capacity(rx_data.len() / 2);
+        for j in 0..laps.capacity() {
+            let lap_raw = ((rx_data[2 * j + 1] as u16) << 8) | rx_data[2 * j] as u16;
+            laps.push(lap_raw & 0x03FF);
+        }
+        let minimum = laps.iter().min().unwrap();
+        let diffs = laps.iter().map(|&d| d - minimum).collect::<Vec<_>>();
+        let diff_max = *diffs.iter().max().unwrap();
+        let diffs: Vec<u16> = if diff_max == 0 {
+            return;
+        } else if diff_max > 500 {
+            let laps = laps
+                .iter()
+                .map(|&d| if d < 500 { d + 1000 } else { d })
+                .collect::<Vec<_>>();
+            let minimum = laps.iter().min().unwrap();
+            laps.iter().map(|d| d - minimum).collect()
+        } else {
+            diffs
+        };
 
-        let make_header = |command: CommandType| {
-            let size = std::mem::size_of::<RxGlobalHeader>();
-            let mut header_bytes = vec![0x00; size];
-            unsafe {
-                let header = header_bytes.as_mut_ptr() as *mut RxGlobalHeader;
-                (*header).msg_id = command as u8;
-                (*header).command = command;
-                header_bytes
+        let dev_num = diffs.len();
+        let calib_body = Self::make_calib_body(diffs);
+        self.send(calib_body);
+        self.wait_msg_processed(dev_num, 0xE0, 0xE0, 200);
+    }
+
+    fn make_calib_body(diffs: Vec<u16>) -> Vec<u8> {
+        let header = RxGlobalHeader::new_with_cmd(CommandType::CmdCalibSeqClock);
+        let mut body =
+            vec![0x00; size_of::<RxGlobalHeader>() + NUM_TRANS_IN_UNIT * 2 * diffs.len()];
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                &header as *const RxGlobalHeader as *const u8,
+                body.as_mut_ptr(),
+                size_of::<RxGlobalHeader>(),
+            );
+            let mut cursor = size_of::<RxGlobalHeader>();
+            for i in 0..diffs.len() {
+                body[cursor] = (diffs[i] & 0x00FF) as u8;
+                body[cursor + 1] = ((diffs[i] & 0xFF00) >> 8) as u8;
+                cursor += NUM_TRANS_IN_UNIT * 2;
             }
-        };
+        }
+        body
+    }
 
-        let mut cpu_versions: Vec<u16> = vec![0x0000; size];
-        let mut fpga_versions: Vec<u16> = vec![0x0000; size];
+    fn make_seq_body(
+        seq: &mut PointSequence,
+        geometry: &Geometry,
+        is_silent: bool,
+    ) -> (u8, Vec<u8>) {
+        let num_devices = geometry.num_devices();
+        let size = size_of::<RxGlobalHeader>() + NUM_TRANS_IN_UNIT * 2 * num_devices;
 
-        let header = make_header(CommandType::CmdReadCpuVerLsb);
-        self.send(header);
+        let mut body = vec![0x00; size];
+        let send_size = num::clamp(seq.control_points().len() - seq.sent(), 0, 40);
 
-        self.wait_msg_processed(CommandType::CmdReadCpuVerLsb as u8, 50);
-        let rx_data = match &self.rx_data {
-            Some(d) => d,
-            None => return vec![],
-        };
-
-        for i in 0..size {
-            cpu_versions[i] = rx_data[2 * i] as u16;
+        let mut ctrl_flags = RxGlobalControlFlags::NONE;
+        if is_silent {
+            ctrl_flags |= RxGlobalControlFlags::SILENT;
         }
 
-        let header = make_header(CommandType::CmdReadCpuVerMsb);
-        self.send(header);
-
-        self.wait_msg_processed(CommandType::CmdReadCpuVerMsb as u8, 50);
-        let rx_data = match &self.rx_data {
-            Some(d) => d,
-            None => return vec![],
+        if seq.sent() == 0 {
+            ctrl_flags |= RxGlobalControlFlags::SEQ_BEGIN;
+        }
+        if seq.sent() + send_size >= seq.control_points().len() {
+            ctrl_flags |= RxGlobalControlFlags::SEQ_END;
+        }
+        let msg_id = unsafe {
+            let header =
+                RxGlobalHeader::new_seq(ctrl_flags, send_size as u16, seq.sampling_freq_div());
+            let src_ptr = &header as *const RxGlobalHeader as *const u8;
+            let dst_ptr = body.as_mut_ptr();
+            std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, size_of::<RxGlobalHeader>());
+            header.msg_id
         };
-        for i in 0..size {
-            cpu_versions[i] |= (rx_data[2 * i] as u16) << 8;
+
+        let mut cursor = size_of::<RxGlobalHeader>();
+        unsafe {
+            for device in 0..num_devices {
+                // MCU use f32 instead of f64 to save memory size
+                let mut local_points = Vec::with_capacity(send_size as usize * 3);
+                for i in 0..(send_size as usize) {
+                    let v64 = geometry.local_position(device, seq.control_points()[seq.sent() + i]);
+                    local_points.push(v64.x as f32);
+                    local_points.push(v64.y as f32);
+                    local_points.push(v64.z as f32);
+                }
+                let src_ptr = local_points.as_ptr() as *const u8;
+                let dst_ptr = body.as_mut_ptr().add(cursor);
+
+                std::ptr::copy_nonoverlapping(
+                    src_ptr,
+                    dst_ptr,
+                    send_size as usize * size_of::<f32>() * 3,
+                );
+                cursor += NUM_TRANS_IN_UNIT * 2;
+            }
         }
+        seq.send(send_size);
+        (msg_id, body)
+    }
+}
 
-        let header = make_header(CommandType::CmdReadFpgaVerLsb);
-        self.send(header);
-
-        self.wait_msg_processed(CommandType::CmdReadFpgaVerLsb as u8, 50);
-        let rx_data = match &self.rx_data {
-            Some(d) => d,
-            None => return vec![],
-        };
-        for i in 0..size {
-            fpga_versions[i] = rx_data[2 * i] as u16;
+// Private functions
+impl AUTD {
+    fn make_header(command: CommandType) -> Vec<u8> {
+        let size = std::mem::size_of::<RxGlobalHeader>();
+        let mut header_bytes = vec![0x00; size];
+        let header = RxGlobalHeader::new_with_cmd(command);
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                &header as *const RxGlobalHeader as *const u8,
+                header_bytes.as_mut_ptr(),
+                size,
+            )
         }
-
-        let header = make_header(CommandType::CmdReadFpgaVerMsb);
-        self.send(header);
-
-        self.wait_msg_processed(CommandType::CmdReadFpgaVerMsb as u8, 50);
-        let rx_data = match &self.rx_data {
-            Some(d) => d,
-            None => return vec![],
-        };
-        for i in 0..size {
-            fpga_versions[i] |= (rx_data[2 * i] as u16) << 8;
-        }
-
-        let mut res = Vec::with_capacity(size);
-        for i in 0..size {
-            let firm_info = FirmwareInfo::new(i as u16, cpu_versions[i], fpga_versions[i]);
-            res.push(firm_info);
-        }
-
-        res
+        header_bytes
     }
 
     fn send(&mut self, data: Vec<u8>) {
@@ -505,7 +648,7 @@ impl AUTD {
             }
         }
         let msg_id = unsafe {
-            let header = RxGlobalHeader::new(ctrl_flags, mod_data);
+            let header = RxGlobalHeader::new_op(ctrl_flags, mod_data);
             let src_ptr = &header as *const RxGlobalHeader as *const u8;
             let dst_ptr = body.as_mut_ptr();
             std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, size_of::<RxGlobalHeader>());
@@ -532,14 +675,19 @@ impl AUTD {
         (msg_id, body)
     }
 
-    fn wait_msg_processed(&mut self, msg_id: u8, max_trial: usize) -> bool {
+    fn wait_msg_processed(
+        &mut self,
+        dev_num: usize,
+        msg_id: u8,
+        mask: u8,
+        max_trial: usize,
+    ) -> bool {
         let link = match &self.link {
             Some(link) => link.clone(),
             None => return false,
         };
 
-        let num_dev = self.geometry().num_devices();
-        let buffer_len = num_dev * INPUT_FRAME_SIZE;
+        let buffer_len = dev_num * INPUT_FRAME_SIZE;
 
         for _ in 0..max_trial {
             let rx_data = {
@@ -552,18 +700,19 @@ impl AUTD {
                 Err(_) => return false,
             };
 
-            let processed = (0..num_dev)
+            let processed = (0..dev_num)
                 .map(|dev| rx_data[dev as usize * INPUT_FRAME_SIZE + 1])
-                .filter(|&proc_id| proc_id == msg_id)
+                .filter(|&proc_id| (proc_id & mask) == msg_id)
                 .count();
             self.rx_data = Some(rx_data);
 
-            if processed == num_dev {
+            if processed == dev_num {
                 return true;
             }
 
-            let wait_t = (EC_TRAFFIC_DELAY * 1000.0 / EC_DEVICE_PER_FRAME as f64 * num_dev as f64)
+            let wait_t = (EC_TRAFFIC_DELAY * 1000.0 / EC_DEVICE_PER_FRAME as f64 * dev_num as f64)
                 .ceil() as u64;
+            let wait_t = 1.max(wait_t);
             std::thread::sleep(std::time::Duration::from_millis(wait_t));
         }
         false
