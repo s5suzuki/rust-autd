@@ -5,7 +5,7 @@
 
 [autd3 library](https://github.com/shinolab/autd3-library-software) for Rust
 
-version: 4.1.0
+version: 5.0.0-rc1
 
 ## About Versioning
 
@@ -16,7 +16,7 @@ The version x.y.z in the original corresponds to the y.z.* of the crate.
 
 ```
 [dependencies]
-autd = "4.1.0"
+autd = "5.0.0-rc1"
 ```
 
 ## Requirements
@@ -29,7 +29,7 @@ If you are using Windows, install [Npcap](https://nmap.org/npcap/) with WinPcap 
 
 ## Examples
 
-See [examples](https://github.com/sssssssuzuki/autd-examples)
+See [examples](https://github.com/sssssssuzuki/autd-examples/tree/v5.0.0)
 
 # Author
 
