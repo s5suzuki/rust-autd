@@ -427,9 +427,9 @@ impl AUTD {
                 size_of::<RxGlobalHeader>(),
             );
             let mut cursor = size_of::<RxGlobalHeader>();
-            for i in 0..diffs.len() {
-                body[cursor] = (diffs[i] & 0x00FF) as u8;
-                body[cursor + 1] = ((diffs[i] & 0xFF00) >> 8) as u8;
+            for diff in diffs {
+                body[cursor] = (diff & 0x00FF) as u8;
+                body[cursor + 1] = ((diff & 0xFF00) >> 8) as u8;
                 cursor += NUM_TRANS_IN_UNIT * 2;
             }
         }
