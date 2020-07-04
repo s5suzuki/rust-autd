@@ -4,7 +4,7 @@
  * Created Date: 29/06/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/06/2020
+ * Last Modified: 04/07/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -76,7 +76,7 @@ fn main() {
 
     autd.set_silent_mode(false);
     let mut seq = CircumSeq::create(
-        Vector3::new(AUTD_WIDTH / 2.0, AUTD_HEIGHT, 150.),
+        Vector3::new(AUTD_WIDTH / 2.0, AUTD_HEIGHT / 2.0, 150.),
         Vector3::z(),
         30.0,
         200,
