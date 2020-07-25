@@ -1,6 +1,6 @@
 [package]
 name = "autd"
-version = "5.0.0"
+version = "6.0.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -17,11 +17,11 @@ exclude = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-autd-gain = "1"
+autd-gain = "6"
 autd-modulation = "1"
 autd-link = "1"
-autd-core = "5.0.0"
-autd-sequence = "1.0.0"
+autd-core = "6"
+autd-sequence = "6"
 autd-timer = "1.2"
 autd-geometry = "1.1"
 num = "0.2"

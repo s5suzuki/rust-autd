@@ -4,7 +4,7 @@
  * Created Date: 02/09/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/06/2020
+ * Last Modified: 25/07/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -447,7 +447,7 @@ impl AUTD {
         let mut body = vec![0x00; size];
         let send_size = num::clamp(seq.control_points().len() - seq.sent(), 0, 40);
 
-        let mut ctrl_flags = RxGlobalControlFlags::NONE;
+        let mut ctrl_flags = RxGlobalControlFlags::SEQ_MODE;
         if is_silent {
             ctrl_flags |= RxGlobalControlFlags::SILENT;
         }
@@ -469,23 +469,29 @@ impl AUTD {
 
         let mut cursor = size_of::<RxGlobalHeader>();
         unsafe {
+            const FIXED_NUM_UNIT: f64 = ULTRASOUND_WAVELENGTH / 256.0;
             for device in 0..num_devices {
-                // MCU use f32 instead of f64 to save memory size
-                let mut local_points = Vec::with_capacity(send_size as usize * 3);
+                let mut foci = Vec::with_capacity(send_size as usize * 10);
                 for i in 0..(send_size as usize) {
                     let v64 = geometry.local_position(device, seq.control_points()[seq.sent() + i]);
-                    local_points.push(v64.x as f32);
-                    local_points.push(v64.y as f32);
-                    local_points.push(v64.z as f32);
+                    let x = (v64.x / FIXED_NUM_UNIT) as i32 as u32;
+                    let y = (v64.y / FIXED_NUM_UNIT) as i32 as u32;
+                    let z = (v64.z / FIXED_NUM_UNIT) as i32 as u32;
+                    foci.push((x & 0x000000FF) as u8);
+                    foci.push(((x & 0x0000FF00) >> 8) as u8);
+                    foci.push((((x & 0x80000000) >> 24) | ((x & 0x007F0000) >> 16)) as u8);
+                    foci.push((y & 0x000000FF) as u8);
+                    foci.push(((y & 0x0000FF00) >> 8) as u8);
+                    foci.push((((y & 0x80000000) >> 24) | ((y & 0x007F0000) >> 16)) as u8);
+                    foci.push((z & 0x000000FF) as u8);
+                    foci.push(((z & 0x0000FF00) >> 8) as u8);
+                    foci.push((((z & 0x80000000) >> 24) | ((z & 0x007F0000) >> 16)) as u8);
+                    foci.push(0xFF); // amp
                 }
-                let src_ptr = local_points.as_ptr() as *const u8;
+                let src_ptr = foci.as_ptr() as *const u8;
                 let dst_ptr = body.as_mut_ptr().add(cursor);
 
-                std::ptr::copy_nonoverlapping(
-                    src_ptr,
-                    dst_ptr,
-                    send_size as usize * size_of::<f32>() * 3,
-                );
+                std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, foci.len());
                 cursor += NUM_TRANS_IN_UNIT * 2;
             }
         }
