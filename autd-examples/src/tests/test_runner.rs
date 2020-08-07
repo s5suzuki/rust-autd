@@ -4,7 +4,7 @@
  * Created Date: 29/08/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/06/2020
+ * Last Modified: 07/08/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -56,13 +56,10 @@ pub fn run(mut autd: AUTD) {
         examples.push((wav_modulation_test, "WavModulation Test"));
     }
 
-    #[cfg(feature = "groupedgain")]
-    {
-        examples.push((
-            grouped_gain_test,
-            "Grouped Gain Test (2 AUTDs are required)",
-        ));
-    }
+    examples.push((
+        grouped_gain_test,
+        "Grouped Gain Test (2 AUTDs are required)",
+    ));
 
     loop {
         for (i, (_, desc)) in examples.iter().enumerate() {

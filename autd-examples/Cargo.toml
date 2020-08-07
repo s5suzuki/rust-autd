@@ -3,6 +3,7 @@ name = "autd-examples"
 version = "6.1.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
+publish = false
 
 [[bin]]
 name = "soem"
@@ -16,7 +17,6 @@ required-features = ["twincat"]
 [[bin]]
 name = "two_autd"
 path = "src/two_autd.rs"
-required-features = ["groupedgain"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
