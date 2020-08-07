@@ -1,12 +1,12 @@
 [package]
 name = "autd-timer"
-version = "1.2.1"
+version = "1.2.2"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
 license = "MIT"
 description = "Native timer wrapper."
-repository = "https://github.com/sssssssuzuki/rust-autd"
+repository = "https://github.com/shinolab/rust-autd"
 readme = "README.md"
 keywords = ["autd"]
 exclude = [

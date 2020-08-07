@@ -1,12 +1,12 @@
 [package]
 name = "autd"
-version = "6.1.0"
+version = "6.1.1"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
 license = "MIT"
 description = "AUTD library for Rust."
-repository = "https://github.com/sssssssuzuki/rust-autd"
+repository = "https://github.com/shinolab/rust-autd"
 readme = "../README.md"
 keywords = ["autd"]
 exclude = [
