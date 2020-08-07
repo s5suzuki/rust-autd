@@ -1,0 +1,26 @@
+[package]
+name = "autd"
+version = "6.1.0"
+authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
+edition = "2018"
+
+license = "MIT"
+description = "AUTD library for Rust."
+repository = "https://github.com/sssssssuzuki/rust-autd"
+readme = "README.md"
+keywords = ["autd"]
+exclude = [
+    ".github/*",
+    "dist/*",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+autd-timer = {path="../autd-timer", version="1.2"}
+num = "0.2"
+bitflags = "1.2"
+na = "0.21"
+
+[dev-dependencies]
+autd-soem-link = {path="../autd-soem-link", version="6.1"}

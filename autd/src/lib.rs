@@ -4,14 +4,26 @@
  * Created Date: 02/09/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 25/07/2020
+ * Last Modified: 07/08/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
  *
  */
 
+#[macro_use]
+extern crate bitflags;
+
+mod core;
+pub mod gain;
+pub mod geometry;
+pub mod link;
+pub mod modulation;
 pub mod prelude;
+pub mod sequence;
+pub mod utils;
+
+pub use crate::core::consts;
 
 use std::error::Error;
 
@@ -20,16 +32,16 @@ use std::mem::size_of;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, RwLock};
 use std::thread::{self, JoinHandle};
 
-use autd_core::consts::*;
-use autd_core::*;
-use autd_gain::Gain;
-use autd_geometry::Geometry;
-use autd_link::Link;
-use autd_modulation::Modulation;
-use autd_sequence::PointSequence;
+use crate::core::consts::*;
+use crate::core::*;
+use crate::geometry::Geometry;
+use crate::link::Link;
+use crate::modulation::Modulation;
+use crate::sequence::PointSequence;
+
 use autd_timer::Timer;
 
-use crate::prelude::*;
+use crate::gain::{primitives::NullGain, Gain};
 
 type GainPtr = Box<dyn Gain>;
 type GainQueue = VecDeque<GainPtr>;
