@@ -1,5 +1,4 @@
 ![build](https://github.com/shinolab/rust-autd/workflows/build/badge.svg)
-![publish](https://github.com/shinolab/rust-autd/workflows/publish/badge.svg)
 
 # AUTD library for Rust
 

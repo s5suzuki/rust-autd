@@ -1,6 +1,6 @@
 [package]
 name = "autd-timer"
-version = "1.2.0"
+version = "1.2.1"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
