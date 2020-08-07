@@ -21,6 +21,3 @@ autd-timer = {path="../autd-timer", version="1.2"}
 num = "0.2"
 bitflags = "1.2"
 na = "0.21"
-
-[dev-dependencies]
-autd-soem-link = {path="../autd-soem-link", version="6.1"}

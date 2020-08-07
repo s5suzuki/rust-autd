@@ -11,7 +11,7 @@
  *
  */
 
-pub use crate::AUTD;
+pub use crate::controller::AUTD;
 
 pub use crate::gain::Gain;
 pub use crate::geometry::Quaternion;
