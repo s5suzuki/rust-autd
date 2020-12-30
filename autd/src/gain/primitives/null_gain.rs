@@ -4,7 +4,7 @@
  * Created Date: 19/11/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/08/2020
+ * Last Modified: 30/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -22,8 +22,8 @@ pub struct NullGain {
 }
 
 impl NullGain {
-    pub fn create() -> Box<NullGain> {
-        Box::new(NullGain { data: None })
+    pub fn create() -> Self {
+        NullGain { data: None }
     }
 }
 

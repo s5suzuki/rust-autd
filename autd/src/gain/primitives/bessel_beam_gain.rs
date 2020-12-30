@@ -4,7 +4,7 @@
  * Created Date: 22/11/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/08/2020
+ * Last Modified: 30/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -17,6 +17,7 @@
 use crate::consts::NUM_TRANS_IN_UNIT;
 use crate::geometry::Geometry;
 use crate::geometry::Vector3;
+use crate::Float;
 
 use super::super::adjust_amp;
 use super::super::Gain;
@@ -26,7 +27,7 @@ use crate::consts::ULTRASOUND_WAVELENGTH;
 pub struct BesselBeamGain {
     point: Vector3,
     dir: Vector3,
-    theta_z: f64,
+    theta_z: Float,
     amp: u8,
     data: Option<Vec<u8>>,
 }
@@ -40,7 +41,7 @@ impl BesselBeamGain {
     /// * `dir` - Direction of the beam.
     /// * `theta_z` - Angle between the conical wavefront of the beam and the direction.
     ///
-    pub fn create(point: Vector3, dir: Vector3, theta_z: f64) -> Box<BesselBeamGain> {
+    pub fn create(point: Vector3, dir: Vector3, theta_z: Float) -> Box<BesselBeamGain> {
         BesselBeamGain::create_with_amp(point, dir, theta_z, 0xff)
     }
 
@@ -56,7 +57,7 @@ impl BesselBeamGain {
     pub fn create_with_amp(
         point: Vector3,
         dir: Vector3,
-        theta_z: f64,
+        theta_z: Float,
         amp: u8,
     ) -> Box<BesselBeamGain> {
         Box::new(BesselBeamGain {

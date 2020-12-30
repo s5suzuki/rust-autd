@@ -1,8 +1,23 @@
-pub type Vector3 = na::Vec3<f64>;
-pub type Vector4 = na::Vec4<f64>;
-pub type Quaternion = na::Quaternion<f64>;
-pub type UnitQuaternion = na::UnitQuaternion<f64>;
-pub type Matrix4x4 = na::Matrix4<f64>;
+/*
+ * File: mod.rs
+ * Project: geometry
+ * Created Date: 30/12/2020
+ * Author: Shun Suzuki
+ * -----
+ * Last Modified: 30/12/2020
+ * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
+ * -----
+ * Copyright (c) 2020 Hapis Lab. All rights reserved.
+ *
+ */
+
+use crate::Float;
+
+pub type Vector3 = na::Vec3<Float>;
+pub type Vector4 = na::Vec4<Float>;
+pub type Quaternion = na::Quaternion<Float>;
+pub type UnitQuaternion = na::UnitQuaternion<Float>;
+pub type Matrix4x4 = na::Matrix4<Float>;
 
 use crate::consts::{NUM_TRANS_IN_UNIT, NUM_TRANS_X, NUM_TRANS_Y, TRANS_SIZE};
 
@@ -27,7 +42,7 @@ impl Device {
             for x in 0..NUM_TRANS_X {
                 if !is_missing_transducer(x, y) {
                     let local_pos =
-                        Vector4::new(x as f64 * TRANS_SIZE, y as f64 * TRANS_SIZE, 0., 1.);
+                        Vector4::new(x as Float * TRANS_SIZE, y as Float * TRANS_SIZE, 0., 1.);
                     global_trans_positions.push(convert_to_vec3(trans_mat * local_pos));
                 }
             }
@@ -67,7 +82,7 @@ impl Geometry {
     /// # Example
     ///
     /// ```
-    /// use std::f64::consts::PI;
+    /// use std::Float::consts::PI;
     /// use autd::geometry::{Vector3, Geometry};
     ///
     /// let mut geometry: Geometry = Default::default();
@@ -99,29 +114,22 @@ impl Geometry {
         device_id
     }
 
-    pub fn del_device(&mut self, device_id: usize) {
-        let mut index = 0;
-        for (i, dev) in self.devices.iter().enumerate() {
-            if dev.device_id == device_id {
-                index = i;
-                break;
-            }
-        }
-        self.devices.remove(index);
-    }
-
     pub fn num_devices(&self) -> usize {
         self.devices.len()
     }
 
-    pub fn position(&self, transducer_id: usize) -> Vector3 {
-        let local_trans_id = transducer_id % NUM_TRANS_IN_UNIT;
-        let device = self.device(transducer_id);
-        device.global_trans_positions[local_trans_id]
+    pub fn position_by_global_idx(&self, global_transducer_idx: usize) -> Vector3 {
+        let local_trans_idx = global_transducer_idx % NUM_TRANS_IN_UNIT;
+        let device_idx = global_transducer_idx / NUM_TRANS_IN_UNIT;
+        self.position_by_local_idx(device_idx, local_trans_idx)
     }
 
-    pub fn local_position(&self, device_id: usize, global_position: Vector3) -> Vector3 {
-        let device = &self.devices[device_id];
+    pub fn position_by_local_idx(&self, device_idx: usize, local_trans_idx: usize) -> Vector3 {
+        self.devices[device_idx].global_trans_positions[local_trans_idx]
+    }
+
+    pub fn local_position(&self, device_idx: usize, global_position: Vector3) -> Vector3 {
+        let device = &self.devices[device_idx];
         let local_origin = device.global_trans_positions[0];
         let x_dir = device.x_direction;
         let y_dir = device.y_direction;
@@ -130,14 +138,8 @@ impl Geometry {
         Vector3::new(rv.dot(&x_dir), rv.dot(&y_dir), rv.dot(&z_dir))
     }
 
-    pub fn direction(&self, transducer_id: usize) -> Vector3 {
-        let device = self.device(transducer_id);
-        device.z_direction
-    }
-
-    fn device(&self, transducer_id: usize) -> &Device {
-        let eid = transducer_id / NUM_TRANS_IN_UNIT;
-        &self.devices[eid]
+    pub fn direction(&self, device_idx: usize) -> Vector3 {
+        self.devices[device_idx].z_direction
     }
 }
 

@@ -4,7 +4,7 @@
  * Created Date: 22/05/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/08/2020
+ * Last Modified: 30/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -14,7 +14,7 @@
 pub mod primitives;
 
 use crate::geometry::Geometry;
-use std::f64::consts::PI;
+use crate::{Float, PI};
 
 /// Gain contains amplitude and phase of each transducer in the AUTD.
 ///  Note that the amplitude and phase mean duty ratio and shift duration of Pulse Width Modulation, respectively.
@@ -28,6 +28,6 @@ pub trait Gain: Send {
 
 /// Adjust amplitude to duty ratio of Pulse Width Modulation.
 pub fn adjust_amp(amp: u8) -> u8 {
-    let d = (amp as f64 / 255.0).asin() / PI; // duty (0 ~ 0.5)
+    let d = (amp as Float / 255.0).asin() / PI; // duty (0 ~ 0.5)
     (510.0 * d) as u8
 }

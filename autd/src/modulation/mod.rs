@@ -1,25 +1,9 @@
+use crate::core::configuration::Configuration;
 pub mod primitives;
 
 /// Modulation contains the amplitude modulation data.
-pub struct Modulation {
-    buffer: Vec<u8>,
-    sent: usize,
-}
-
-impl Modulation {
-    pub fn new(buffer: Vec<u8>) -> Self {
-        Modulation { buffer, sent: 0 }
-    }
-
-    pub fn buffer(&self) -> &[u8] {
-        &self.buffer
-    }
-
-    pub fn sent(&self) -> usize {
-        self.sent
-    }
-
-    pub fn send(&mut self, sent: usize) {
-        self.sent += sent;
-    }
+pub trait Modulation: Send {
+    fn build(&mut self, config: Configuration);
+    fn buffer(&self) -> &[u8];
+    fn sent(&mut self) -> &mut usize;
 }
