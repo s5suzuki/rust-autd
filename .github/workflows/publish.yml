@@ -12,7 +12,27 @@ jobs:
     - uses: actions/checkout@v2
     - name: Checkout submodules
       run: git submodule update --init --force --recursive
-    - name: Publish All
-      uses: ./.github/actions/cargo-publish-all
-      with:
-        crate-io-token: ${{ secrets.CRATEIO_TOKEN }}
+    - name: publish
+      run: |
+        cd autd-timer
+        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cd .. && sleep 60
+        cd autd
+        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cd .. && sleep 60
+        cd autd-csv-gain
+        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cd .. && sleep 60
+        cd autd-holo-gain
+        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cd .. && sleep 60
+        cd autd-soem-link
+        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cd .. && sleep 60
+        cd autd-twincat-link
+        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cd .. && sleep 60
+        cd autd-wav-modulation
+        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cd .. && sleep 60
+  
