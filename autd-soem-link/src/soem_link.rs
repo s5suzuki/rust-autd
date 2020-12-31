@@ -82,8 +82,4 @@ impl Link for SoemLink {
     fn is_open(&self) -> bool {
         self.handler.is_open()
     }
-
-    fn calibrate(&mut self) -> Result<bool, Box<dyn Error>> {
-        unreachable!("This method is no longer necessary after v0.5")
-    }
 }

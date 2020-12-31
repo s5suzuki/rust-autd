@@ -4,12 +4,14 @@
  * Created Date: 07/08/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/12/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
  *
  */
+
+pub mod debug_link;
 
 use std::error::Error;
 
@@ -20,5 +22,4 @@ pub trait Link: Send {
     fn send(&mut self, data: &[u8]) -> Result<(), Box<dyn Error>>;
     fn read(&mut self, data: &mut [u8], buffer_len: usize) -> Result<(), Box<dyn Error>>;
     fn is_open(&self) -> bool;
-    fn calibrate(&mut self) -> Result<bool, Box<dyn Error>>;
 }
