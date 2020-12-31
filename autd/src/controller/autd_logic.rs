@@ -4,7 +4,7 @@
  * Created Date: 30/12/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/12/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -358,7 +358,7 @@ impl<L: Link> AUTDLogic<L> {
         if let Some(gain) = gain {
             let mut cursor = size_of::<RxGlobalHeader>();
             let byte_size = NUM_TRANS_IN_UNIT * 2;
-            let gain_ptr = gain.get_data().as_ptr();
+            let gain_ptr = gain.get_data().as_ptr() as *const u8;
             unsafe {
                 for i in 0..num_devices {
                     let src_ptr = gain_ptr.add(i * byte_size);
@@ -417,7 +417,7 @@ impl<L: Link> AUTDLogic<L> {
         if let Some(gain) = gain {
             let mut cursor = size_of::<RxGlobalHeader>();
             let byte_size = NUM_TRANS_IN_UNIT * 2;
-            let gain_ptr = gain.get_data().as_ptr();
+            let gain_ptr = gain.get_data().as_ptr() as *const u8;
             unsafe {
                 for i in 0..num_devices {
                     let src_ptr = gain_ptr.add(i * byte_size);
@@ -463,15 +463,15 @@ impl<L: Link> AUTDLogic<L> {
         };
 
         let mut cursor = size_of::<RxGlobalHeader>();
+        let fixed_num_unit: Float = geometry.wavelength() / 256.0;
         unsafe {
-            const FIXED_NUM_UNIT: Float = ULTRASOUND_WAVELENGTH / 256.0;
             for device in 0..num_devices {
                 let mut foci = Vec::with_capacity(send_size as usize * 10);
                 for i in 0..(send_size as usize) {
                     let v64 = geometry.local_position(device, seq.control_points()[seq.sent() + i]);
-                    let x = (v64.x / FIXED_NUM_UNIT) as i32 as u32;
-                    let y = (v64.y / FIXED_NUM_UNIT) as i32 as u32;
-                    let z = (v64.z / FIXED_NUM_UNIT) as i32 as u32;
+                    let x = (v64.x / fixed_num_unit) as i32 as u32;
+                    let y = (v64.y / fixed_num_unit) as i32 as u32;
+                    let z = (v64.z / fixed_num_unit) as i32 as u32;
                     foci.push((x & 0x000000FF) as u8);
                     foci.push(((x & 0x0000FF00) >> 8) as u8);
                     foci.push((((x & 0x80000000) >> 24) | ((x & 0x007F0000) >> 16)) as u8);

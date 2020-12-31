@@ -4,7 +4,7 @@
  * Created Date: 02/09/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/08/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -66,15 +66,16 @@ impl Link for SoemLink {
         Ok(())
     }
 
-    fn send(&mut self, data: Vec<u8>) -> Result<(), Box<dyn Error>> {
+    fn send(&mut self, data: &[u8]) -> Result<(), Box<dyn Error>> {
         self.handler.send(data);
         Ok(())
     }
 
-    fn read(&mut self, _buffer_len: u32) -> Result<Vec<u8>, Box<dyn Error>> {
-        match self.handler.read() {
-            Some(data) => Ok(data),
-            None => Err(From::from(SOEMError::FailedReadData)),
+    fn read(&mut self, data: &mut [u8], _buffer_len: usize) -> Result<(), Box<dyn Error>> {
+        if self.handler.read(data) {
+            Ok(())
+        } else {
+            Err(Box::new(SOEMError::FailedReadData))
         }
     }
 

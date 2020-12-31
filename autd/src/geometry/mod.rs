@@ -4,7 +4,7 @@
  * Created Date: 30/12/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/12/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -22,7 +22,6 @@ pub type Matrix4x4 = na::Matrix4<Float>;
 use crate::consts::{NUM_TRANS_IN_UNIT, NUM_TRANS_X, NUM_TRANS_Y, TRANS_SIZE};
 
 struct Device {
-    device_id: usize,
     global_trans_positions: Vec<Vector3>,
     x_direction: Vector3,
     y_direction: Vector3,
@@ -30,7 +29,7 @@ struct Device {
 }
 
 impl Device {
-    pub fn new(device_id: usize, position: Vector3, rotation: UnitQuaternion) -> Device {
+    pub fn new(position: Vector3, rotation: UnitQuaternion) -> Device {
         let rot_mat: Matrix4x4 = From::from(rotation);
         let trans_mat = rot_mat.append_translation(&position);
         let x_direction = Self::get_direction(Vector3::x(), rotation);
@@ -49,7 +48,6 @@ impl Device {
         }
 
         Device {
-            device_id,
             global_trans_positions,
             x_direction,
             y_direction,
@@ -66,9 +64,25 @@ impl Device {
 #[derive(Default)]
 pub struct Geometry {
     devices: Vec<Device>,
+    wavelength: Float,
 }
 
 impl Geometry {
+    pub fn new() -> Self {
+        Self {
+            devices: vec![],
+            wavelength: 8.5,
+        }
+    }
+
+    pub fn set_wavelength(&mut self, wavelength: Float) {
+        self.wavelength = wavelength;
+    }
+
+    pub fn wavelength(&self) -> Float {
+        self.wavelength
+    }
+
     /// Add device to the geometry.
     ///
     /// Use this method to specify the device geometry in order of proximity to the master.
@@ -90,7 +104,7 @@ impl Geometry {
     /// geometry.add_device(Vector3::zeros(), Vector3::zeros());
     /// geometry.add_device(Vector3::new(192., 0., 0.), Vector3::new(-PI, 0., 0.));
     /// ```
-    pub fn add_device(&mut self, position: Vector3, euler_angles: Vector3) -> usize {
+    pub fn add_device(&mut self, position: Vector3, euler_angles: Vector3) {
         let q = UnitQuaternion::from_axis_angle(&Vector3::z_axis(), euler_angles.x)
             * UnitQuaternion::from_axis_angle(&Vector3::y_axis(), euler_angles.y)
             * UnitQuaternion::from_axis_angle(&Vector3::z_axis(), euler_angles.z);
@@ -107,11 +121,8 @@ impl Geometry {
     /// * `pos` - Global position of AUTD.
     /// * `rot` - Rotation quaternion.
     ///
-    pub fn add_device_quaternion(&mut self, position: Vector3, rotation: UnitQuaternion) -> usize {
-        let device_id = self.devices.len();
-        self.devices
-            .push(Device::new(device_id, position, rotation));
-        device_id
+    pub fn add_device_quaternion(&mut self, position: Vector3, rotation: UnitQuaternion) {
+        self.devices.push(Device::new(position, rotation));
     }
 
     pub fn num_devices(&self) -> usize {

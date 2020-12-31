@@ -4,7 +4,7 @@
  * Created Date: 23/05/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/05/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -14,7 +14,7 @@
 use crate::NativeTimerWrapper;
 
 #[cfg(target_os = "windows")]
-use winapi::um::winnt::PVOID;
+use winapi::shared::basetsd::DWORD_PTR;
 
 #[cfg(target_os = "linux")]
 use libc::{c_int, c_void, siginfo_t};
@@ -50,8 +50,14 @@ impl Timer {
     }
 
     #[cfg(target_os = "windows")]
-    unsafe extern "system" fn rt_thread(lp_param: PVOID, _t: u8) {
-        let ptr = lp_param as *mut Self;
+    unsafe extern "system" fn rt_thread(
+        _u_timer_id: u32,
+        _u_msg: u32,
+        dw_user: DWORD_PTR,
+        _dw1: DWORD_PTR,
+        _dw2: DWORD_PTR,
+    ) {
+        let ptr = dw_user as *mut Self;
         if let Some(cb) = &mut (*ptr).cb {
             cb();
         }
@@ -68,7 +74,7 @@ impl Timer {
 
     #[cfg(target_os = "linux")]
     #[allow(deprecated)]
-    unsafe extern "C" fn get_ptr(si: *mut siginfo_t) -> u64{
+    unsafe extern "C" fn get_ptr(si: *mut siginfo_t) -> u64 {
         // TODO: This depends on the deprecated field of libc crate, and may only work on a specific platforms.
         let ptr_lsb = (*si)._pad[3];
         let ptr_msb = (*si)._pad[4];

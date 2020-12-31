@@ -1,6 +1,6 @@
 [package]
 name = "autd"
-version = "6.1.1"
+version = "8.0.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -17,7 +17,7 @@ exclude = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-autd-timer = {path="../autd-timer", version="1.2"}
+autd-timer = {path="../autd-timer", version="2.0.0"}
 num = "0.3.1"
 bitflags = "1.2"
 na = "0.23.0"

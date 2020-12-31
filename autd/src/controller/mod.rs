@@ -4,7 +4,7 @@
  * Created Date: 07/08/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/12/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -50,15 +50,16 @@ pub struct AUTD<L: Link + 'static> {
 }
 
 impl<L: Link + 'static> AUTD<L> {
-    pub fn open(geometry: Geometry, link: L) -> Self {
+    pub fn open(geometry: Geometry, mut link: L) -> Result<Self, Box<dyn Error>> {
+        link.open()?;
         let logic = AUTDLogic::new(geometry, link);
         let logic = Arc::new(Mutex::new(logic));
-        Self {
+        Ok(Self {
             logic: logic.clone(),
             sync_cnt: SyncController::new(logic.clone()),
             async_cnt: AsyncController::new(logic.clone()),
             stm_cnt: STMController::new(logic),
-        }
+        })
     }
 
     pub fn is_open(&self) -> bool {

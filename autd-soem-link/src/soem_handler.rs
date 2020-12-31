@@ -4,7 +4,7 @@
  * Created Date: 30/08/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 29/06/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -197,11 +197,11 @@ impl RuSOEM {
         }
     }
 
-    pub fn send(&self, data: Vec<u8>) {
+    pub fn send(&self, data: &[u8]) {
         let (send_lk, send_cvar) = &*self.send_buf_q;
         {
             let mut deq = send_lk.lock().unwrap();
-            deq.push_back(data);
+            deq.push_back(data.to_vec());
         }
         send_cvar.notify_one();
     }
@@ -238,31 +238,28 @@ impl RuSOEM {
         }
     }
 
-    pub fn read<T>(&self) -> Option<Vec<T>> {
+    pub fn read<T>(&self, data: &mut [T]) -> bool {
         if let Ok(io_map) = self.io_map.read() {
-            let v = Self::read_input(&io_map, self.config);
-            Some(v)
+            Self::read_input(data, &io_map, self.config);
+            true
         } else {
-            None
+            false
         }
     }
 
-    fn read_input<T>(io_map: &[u8], config: ECConfig) -> Vec<T> {
+    fn read_input<T>(data: &mut [T], io_map: &[u8], config: ECConfig) {
         let size = io_map.len();
         let output_frame_size = config.header_size + config.body_size;
         let dev_num = size / (output_frame_size + config.input_frame_size);
         let element_size = std::mem::size_of::<T>();
         let len = dev_num * config.input_frame_size / element_size;
-        let mut v = Vec::<T>::with_capacity(len);
         unsafe {
-            v.set_len(len);
             std::ptr::copy_nonoverlapping(
                 io_map.as_ptr().add(output_frame_size * dev_num) as *const T,
-                v.as_mut_ptr(),
+                data.as_mut_ptr(),
                 len,
             );
         }
-        v
     }
 
     unsafe fn setup_sync0(activate: bool, dev_num: u16, cycle_time: u32) {

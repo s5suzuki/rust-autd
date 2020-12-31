@@ -4,7 +4,7 @@
  * Created Date: 02/12/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/08/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -16,9 +16,9 @@ use std::ffi::OsString;
 use std::fmt;
 use std::fs::File;
 
-use autd::consts::*;
 use autd::gain::*;
 use autd::geometry::Geometry;
+use autd::{consts::*, Float};
 
 #[derive(Debug)]
 pub enum CsvGainError {
@@ -48,34 +48,39 @@ impl Error for CsvGainError {
 }
 
 pub struct CsvGain {
-    data: Option<Vec<u8>>,
+    data: Option<Vec<DataArray>>,
 }
 
 impl CsvGain {
-    pub fn create(file_path: &OsString) -> Result<Box<Self>, Box<dyn Error>> {
+    pub fn create(file_path: &OsString) -> Result<Self, Box<dyn Error>> {
         let mut data = Vec::new();
         let file = File::open(file_path)?;
         let mut rdr = csv::Reader::from_reader(file);
+
+        let mut buf: DataArray = unsafe { std::mem::zeroed() };
+        let mut idx = 0;
         for result in rdr.records() {
             let record = result?;
             if record.len() != 2 {
                 return Err(CsvGainError::ParseError.into());
             }
-            let amp: f64 = record[0].parse()?;
-            let phase: f64 = record[1].parse()?;
-            let amp = (amp * 255.0) as u8;
-            let phase = (phase * 255.0) as u8;
-            let d = adjust_amp(amp);
-            let s = phase;
-            data.push(s);
-            data.push(d);
+            let amp: Float = record[0].parse()?;
+            let phase: Float = record[1].parse()?;
+            let phase = (phase * 255.0) as u16;
+            let d = (adjust_amp(amp) as u16) << 8;
+            buf[idx] = d | phase;
+            idx += 1;
+            if idx == NUM_TRANS_IN_UNIT {
+                data.push(buf);
+                buf = unsafe { std::mem::zeroed() };
+            }
         }
-        Ok(Box::new(Self { data: Some(data) }))
+        Ok(Self { data: Some(data) })
     }
 }
 
 impl Gain for CsvGain {
-    fn get_data(&self) -> &[u8] {
+    fn get_data(&self) -> &[DataArray] {
         assert!(self.data.is_some());
         match &self.data {
             Some(data) => data,
@@ -85,10 +90,9 @@ impl Gain for CsvGain {
 
     fn build(&mut self, geometry: &Geometry) {
         let ndevice = geometry.num_devices();
-        let ntrans = NUM_TRANS_IN_UNIT * ndevice;
-
         if let Some(data) = &mut self.data {
-            data.resize(ntrans * 2, 0);
+            let buf: DataArray = unsafe { std::mem::zeroed() };
+            data.resize(ndevice, buf);
         }
     }
 }

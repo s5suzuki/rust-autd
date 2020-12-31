@@ -4,7 +4,7 @@
  * Created Date: 21/11/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/12/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -20,7 +20,6 @@ pub const TRANS_SIZE: Float = 10.16;
 pub const NUM_TRANS_X: usize = 18;
 pub const NUM_TRANS_Y: usize = 14;
 pub const NUM_TRANS_IN_UNIT: usize = NUM_TRANS_X * NUM_TRANS_Y - 3;
-pub const ULTRASOUND_WAVELENGTH: Float = 8.5;
 pub const ULTRASOUND_FREQUENCY: Float = 40000.0;
 
 pub const MOD_SAMPLING_FREQUENCY: Float = 4000.0;

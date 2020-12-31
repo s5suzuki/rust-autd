@@ -4,7 +4,7 @@
  * Created Date: 29/08/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/08/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -21,20 +21,20 @@ use crate::tests::*;
 use autd::prelude::*;
 use colored::*;
 
-type TestFn = fn(&mut AUTD) -> Result<(), Box<dyn Error>>;
+type TestFn<L> = fn(&mut AUTD<L>) -> Result<(), Box<dyn Error>>;
 
-pub fn run(mut autd: AUTD) {
+pub fn run<L: Link>(mut autd: AUTD<L>) -> Result<(), Box<dyn Error>> {
     autd.clear().unwrap();
 
     println!("***** Firmware information *****");
-    let firm_list = autd.firmware_info_list();
+    let firm_list = autd.firmware_info_list()?;
     for firm_info in firm_list {
         println!("{}", firm_info);
     }
     println!("********************************");
 
     #[allow(unused_mut)]
-    let mut examples: Vec<(TestFn, _)> = vec![
+    let mut examples: Vec<(TestFn<L>, _)> = vec![
         (simple_test, "Single Focal Point Test"),
         (bessel_test, "BesselBeam Test"),
         (soft_stm_test, "Spatio-temporal Modulation Test"),
@@ -90,7 +90,7 @@ pub fn run(mut autd: AUTD) {
                 println!("press any key to finish...");
                 let mut input = String::new();
                 io::stdin().read_line(&mut input).unwrap();
-                autd.stop();
+                autd.stop()?;
                 autd.clear().unwrap();
                 println!("finish");
             }
@@ -99,4 +99,6 @@ pub fn run(mut autd: AUTD) {
             }
         }
     }
+
+    Ok(())
 }
