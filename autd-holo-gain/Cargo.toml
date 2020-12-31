@@ -5,7 +5,7 @@ authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
 license = "MIT"
-description = "CSV Gain for AUTD."
+description = "Holo (Multiple foci) Gain for AUTD."
 repository = "https://github.com/shinolab/rust-autd"
 readme = "README.md"
 keywords = ["autd"]
