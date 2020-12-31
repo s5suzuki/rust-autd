@@ -4,11 +4,11 @@
  * Created Date: 07/08/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/08/2020
+ * Last Modified: 30/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
- * 
+ *
  */
 
 use std::error::Error;
@@ -17,8 +17,8 @@ use std::error::Error;
 pub trait Link: Send {
     fn open(&mut self) -> Result<(), Box<dyn Error>>;
     fn close(&mut self) -> Result<(), Box<dyn Error>>;
-    fn send(&mut self, data: Vec<u8>) -> Result<(), Box<dyn Error>>;
-    fn read(&mut self, buffer_len: u32) -> Result<Vec<u8>, Box<dyn Error>>;
+    fn send(&mut self, data: &[u8]) -> Result<(), Box<dyn Error>>;
+    fn read(&mut self, data: &mut [u8], buffer_len: usize) -> Result<(), Box<dyn Error>>;
     fn is_open(&self) -> bool;
     fn calibrate(&mut self) -> Result<bool, Box<dyn Error>>;
 }

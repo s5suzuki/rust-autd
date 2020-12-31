@@ -2,11 +2,11 @@
 
 members = [
     "autd",
-    "autd-timer",
     "autd-csv-gain",
-    "autd-holo-gain",
-    "autd-wav-modulation",
-    "autd-soem-link",
-    "autd-twincat-link",
     "autd-examples",
+    "autd-holo-gain",
+    "autd-soem-link",
+    "autd-timer",
+    "autd-twincat-link",
+    "autd-wav-modulation",
 ]

@@ -1,3 +1,4 @@
+pub mod configuration;
 pub mod consts;
 mod firmware_info;
 mod rx_global_header;

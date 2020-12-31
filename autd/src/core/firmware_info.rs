@@ -4,7 +4,7 @@
  * Created Date: 04/04/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 25/07/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -42,6 +42,8 @@ impl FirmwareInfo {
             1 => "v0.4".to_string(),
             2 => "v0.5".to_string(),
             3 => "v0.6".to_string(),
+            4 => "v0.7".to_string(),
+            5 => "v0.8".to_string(),
             _ => format!("unknown: {}", version_number),
         }
     }

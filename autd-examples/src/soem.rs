@@ -4,7 +4,7 @@
  * Created Date: 16/12/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 25/05/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -47,15 +47,13 @@ fn get_adapter() -> String {
 }
 
 fn main() {
-    let mut autd = AUTD::create();
-
-    autd.geometry()
-        .add_device(Vector3::zeros(), Vector3::zeros());
+    let mut geometry = Geometry::new();
+    geometry.add_device(Vector3::zeros(), Vector3::zeros());
 
     let ifname = get_adapter();
-    let link = SoemLink::new(&ifname, autd.geometry().num_devices() as u16);
+    let link = SoemLink::new(&ifname, geometry.num_devices() as u16);
 
-    autd.open(link).expect("Failed to open");
+    let autd = AUTD::open(geometry, link).expect("Failed to open");
 
-    run(autd);
+    run(autd).expect("Some error occurred.");
 }

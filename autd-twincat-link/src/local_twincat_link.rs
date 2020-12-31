@@ -4,7 +4,7 @@
  * Created Date: 16/12/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/08/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -73,7 +73,7 @@ impl Link for LocalTwinCATLink {
         Ok(())
     }
 
-    fn send(&mut self, data: Vec<u8>) -> Result<(), Box<dyn Error>> {
+    fn send(&mut self, data: &[u8]) -> Result<(), Box<dyn Error>> {
         unsafe {
             let n_err = (TC_ADS.tc_ads_sync_write_req)(
                 self.port,
@@ -92,17 +92,15 @@ impl Link for LocalTwinCATLink {
         }
     }
 
-    fn read(&mut self, buffer_len: u32) -> Result<Vec<u8>, Box<dyn Error>> {
-        let mut data = Vec::with_capacity(buffer_len as usize);
+    fn read(&mut self, data: &mut [u8], buffer_len: usize) -> Result<(), Box<dyn Error>> {
         let mut read_bytes: u32 = 0;
         unsafe {
-            data.set_len(buffer_len as usize);
             let n_err = (TC_ADS.tc_ads_sync_read_req)(
                 self.port,
                 &self.send_addr as *const _,
                 INDEX_GROUP,
                 INDEX_OFFSET_BASE_READ,
-                buffer_len,
+                buffer_len as u32,
                 data.as_mut_ptr() as *mut c_void,
                 &mut read_bytes as *mut u32,
             );
@@ -110,7 +108,7 @@ impl Link for LocalTwinCATLink {
             if n_err > 0 {
                 Err(From::from(ADSError::FailedReadData(n_err)))
             } else {
-                Ok(data)
+                Ok(())
             }
         }
     }

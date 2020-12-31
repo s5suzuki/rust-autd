@@ -4,15 +4,17 @@
  * Created Date: 29/12/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 25/05/2020
+ * Last Modified: 30/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
  *
  */
 
+use crate::Float;
+
 #[allow(clippy::excessive_precision, clippy::unreadable_literal)]
-static DIR_COEF_A: &[f64] = &[
+static DIR_COEF_A: &[Float] = &[
     1.0,
     1.0,
     1.0,
@@ -25,7 +27,7 @@ static DIR_COEF_A: &[f64] = &[
 ];
 
 #[allow(clippy::excessive_precision, clippy::unreadable_literal)]
-static DIR_COEF_B: &[f64] = &[
+static DIR_COEF_B: &[Float] = &[
     0.,
     0.,
     -0.00459648054721,
@@ -38,7 +40,7 @@ static DIR_COEF_B: &[f64] = &[
 ];
 
 #[allow(clippy::excessive_precision, clippy::unreadable_literal)]
-static DIR_COEF_C: &[f64] = &[
+static DIR_COEF_C: &[Float] = &[
     0.,
     0.,
     -0.000787968093807,
@@ -51,7 +53,7 @@ static DIR_COEF_C: &[f64] = &[
 ];
 
 #[allow(clippy::excessive_precision, clippy::unreadable_literal)]
-static DIR_COEF_D: &[f64] = &[
+static DIR_COEF_D: &[Float] = &[
     0.,
     0.,
     1.60125528528e-05,
@@ -64,7 +66,7 @@ static DIR_COEF_D: &[f64] = &[
 ];
 
 #[allow(clippy::many_single_char_names)]
-pub fn directivity_t4010a1(theta_deg: f64) -> f64 {
+pub fn directivity_t4010a1(theta_deg: Float) -> Float {
     let mut theta_deg = theta_deg.abs();
 
     while theta_deg > 90.0 {
@@ -80,7 +82,7 @@ pub fn directivity_t4010a1(theta_deg: f64) -> f64 {
         let b = DIR_COEF_B[i - 1];
         let c = DIR_COEF_C[i - 1];
         let d = DIR_COEF_D[i - 1];
-        let x = theta_deg - (i as f64 - 1.0) * 10.0;
+        let x = theta_deg - (i as Float - 1.0) * 10.0;
         a + b * x + c * x * x + d * x * x * x
     }
 }

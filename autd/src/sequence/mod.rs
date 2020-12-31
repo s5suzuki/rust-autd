@@ -4,7 +4,7 @@
  * Created Date: 30/06/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/08/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -15,6 +15,7 @@ pub mod primitives;
 
 use crate::consts::*;
 use crate::geometry::Vector3;
+use crate::Float;
 
 pub struct PointSequence {
     control_points: Vec<Vector3>,
@@ -59,8 +60,8 @@ impl PointSequence {
         self.control_points.extend_from_slice(points);
     }
 
-    pub fn set_freq(&mut self, freq: f64) -> f64 {
-        let sample_freq = self.control_points.len() as f64 * freq;
+    pub fn set_freq(&mut self, freq: Float) -> Float {
+        let sample_freq = self.control_points.len() as Float * freq;
         let div = (POINT_SEQ_BASE_FREQ / sample_freq) as usize;
         let lm_cycle = self.control_points.len() * div;
 
@@ -74,24 +75,20 @@ impl PointSequence {
         self.freq()
     }
 
-    pub fn freq(&self) -> f64 {
-        self.sampling_freq() / self.control_points.len() as f64
+    pub fn freq(&self) -> Float {
+        self.sampling_freq() / self.control_points.len() as Float
     }
 
-    pub fn sampling_freq(&self) -> f64 {
-        POINT_SEQ_BASE_FREQ / self.sample_freq_div as f64
+    pub fn sampling_freq(&self) -> Float {
+        POINT_SEQ_BASE_FREQ / self.sample_freq_div as Float
     }
 
     pub fn sampling_freq_div(&self) -> u16 {
         self.sample_freq_div
     }
 
-    pub fn sent(&self) -> usize {
-        self.sent
-    }
-
-    pub fn send(&mut self, send: usize) {
-        self.sent += send;
+    pub fn sent(&mut self) -> &mut usize {
+        &mut self.sent
     }
 
     pub fn control_points(&self) -> &[Vector3] {

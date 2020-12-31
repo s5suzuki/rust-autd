@@ -4,26 +4,25 @@
  * Created Date: 22/11/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/08/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
  *
  */
 
-use crate::consts::NUM_TRANS_IN_UNIT;
-use crate::geometry::Geometry;
 use crate::geometry::Vector3;
+use crate::{consts::DataArray, geometry::Geometry};
+use crate::{consts::NUM_TRANS_IN_UNIT, Float};
 
 use super::super::adjust_amp;
 use super::super::Gain;
-use crate::consts::ULTRASOUND_WAVELENGTH;
 
 /// Gain to create plane wave.
 pub struct PlaneWaveGain {
     dir: Vector3,
-    amp: u8,
-    data: Option<Vec<u8>>,
+    duty: u8,
+    data: Option<Vec<DataArray>>,
 }
 
 impl PlaneWaveGain {
@@ -33,8 +32,8 @@ impl PlaneWaveGain {
     ///
     /// * `dir` - Wave direction.
     ///
-    pub fn create(dir: Vector3) -> Box<PlaneWaveGain> {
-        PlaneWaveGain::create_with_amp(dir, 0xff)
+    pub fn create(dir: Vector3) -> Self {
+        Self::create_with_duty(dir, 0xff)
     }
 
     /// Generate PlaneWaveGain.
@@ -44,17 +43,28 @@ impl PlaneWaveGain {
     /// * `dir` - Wave direction.
     /// * `amp` - Amplitude of the wave.
     ///
-    pub fn create_with_amp(dir: Vector3, amp: u8) -> Box<PlaneWaveGain> {
-        Box::new(PlaneWaveGain {
+    pub fn create_with_amp(dir: Vector3, amp: Float) -> Self {
+        Self::create_with_duty(dir, adjust_amp(amp))
+    }
+
+    /// Generate PlaneWaveGain.
+    ///
+    /// # Arguments
+    ///
+    /// * `dir` - Wave direction.
+    /// * `duty` - Duty ratio of input signal to transducer.
+    ///
+    pub fn create_with_duty(dir: Vector3, duty: u8) -> Self {
+        PlaneWaveGain {
             dir,
-            amp,
+            duty,
             data: None,
-        })
+        }
     }
 }
 
 impl Gain for PlaneWaveGain {
-    fn get_data(&self) -> &[u8] {
+    fn get_data(&self) -> &[DataArray] {
         assert!(self.data.is_some());
         match &self.data {
             Some(data) => data,
@@ -68,21 +78,23 @@ impl Gain for PlaneWaveGain {
         }
 
         let num_devices = geometry.num_devices();
-        let num_trans = NUM_TRANS_IN_UNIT * num_devices;
-        let mut data = Vec::with_capacity(num_trans * 2);
+        let mut data = Vec::with_capacity(num_devices);
+
         let dir = self.dir;
-        let amp = self.amp;
-        for i in 0..num_trans {
-            let trp = geometry.position(i);
-            let dist = dir.dot(&trp);
-            let phase = (dist % ULTRASOUND_WAVELENGTH) / ULTRASOUND_WAVELENGTH;
-            let amp: u8 = amp;
-            let phase = (255.0 * (1.0 - phase)) as u8;
-            let d = adjust_amp(amp);
-            let s = phase;
-            data.push(s);
-            data.push(d);
+        let duty = (self.duty as u16) << 8;
+        let wavelength = geometry.wavelength();
+        for dev in 0..num_devices {
+            let mut buf: DataArray = unsafe { std::mem::zeroed() };
+            for (i, b) in buf.iter_mut().enumerate().take(NUM_TRANS_IN_UNIT) {
+                let trp = geometry.position_by_local_idx(dev, i);
+                let dist = dir.dot(&trp);
+                let phase = (dist % wavelength) / wavelength;
+                let phase = (255.0 * (1.0 - phase)) as u16;
+                *b = duty | phase;
+            }
+            data.push(buf);
         }
+
         self.data = Some(data);
     }
 }

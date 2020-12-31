@@ -4,7 +4,7 @@
  * Created Date: 16/12/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/05/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -18,16 +18,18 @@ fn main() {
         .warnings(true)
         .cpp(true)
         .static_flag(true)
+        .file("deps/ADS/AdsLib/standalone/AdsLib.cpp")
+        .file("deps/ADS/AdsLib/standalone/AmsConnection.cpp")
+        .file("deps/ADS/AdsLib/standalone/AmsNetId.cpp")
+        .file("deps/ADS/AdsLib/standalone/AmsPort.cpp")
+        .file("deps/ADS/AdsLib/standalone/AmsRouter.cpp")
+        .file("deps/ADS/AdsLib/standalone/NotificationDispatcher.cpp")
         .file("deps/ADS/AdsLib/AdsDef.cpp")
-        .file("deps/ADS/AdsLib/AdsLib.cpp")
-        .file("deps/ADS/AdsLib/AmsConnection.cpp")
-        .file("deps/ADS/AdsLib/AmsPort.cpp")
-        .file("deps/ADS/AdsLib/AmsRouter.cpp")
         .file("deps/ADS/AdsLib/Frame.cpp")
         .file("deps/ADS/AdsLib/Log.cpp")
-        .file("deps/ADS/AdsLib/NotificationDispatcher.cpp")
         .file("deps/ADS/AdsLib/Sockets.cpp")
         .include("deps/ADS/AdsLib")
+        .include("deps/ADS/AdsLib/standalone")
         .compile("libads.a");
 }
 
@@ -37,16 +39,18 @@ fn main() {
         .warnings(true)
         .cpp(true)
         .static_flag(true)
+        .file("deps/ADS/AdsLib/standalone/AdsLib.cpp")
+        .file("deps/ADS/AdsLib/standalone/AmsConnection.cpp")
+        .file("deps/ADS/AdsLib/standalone/AmsNetId.cpp")
+        .file("deps/ADS/AdsLib/standalone/AmsPort.cpp")
+        .file("deps/ADS/AdsLib/standalone/AmsRouter.cpp")
+        .file("deps/ADS/AdsLib/standalone/NotificationDispatcher.cpp")
         .file("deps/ADS/AdsLib/AdsDef.cpp")
-        .file("deps/ADS/AdsLib/AdsLib.cpp")
-        .file("deps/ADS/AdsLib/AmsConnection.cpp")
-        .file("deps/ADS/AdsLib/AmsPort.cpp")
-        .file("deps/ADS/AdsLib/AmsRouter.cpp")
         .file("deps/ADS/AdsLib/Frame.cpp")
         .file("deps/ADS/AdsLib/Log.cpp")
-        .file("deps/ADS/AdsLib/NotificationDispatcher.cpp")
         .file("deps/ADS/AdsLib/Sockets.cpp")
         .include("deps/ADS/AdsLib")
+        .include("deps/ADS/AdsLib/standalone")
         .compile("libads.a");
 }
 
@@ -57,15 +61,17 @@ fn main() {
         .cpp(true)
         .static_flag(true)
         .flag("-std=c++17")
+        .file("deps/ADS/AdsLib/standalone/AdsLib.cpp")
+        .file("deps/ADS/AdsLib/standalone/AmsConnection.cpp")
+        .file("deps/ADS/AdsLib/standalone/AmsNetId.cpp")
+        .file("deps/ADS/AdsLib/standalone/AmsPort.cpp")
+        .file("deps/ADS/AdsLib/standalone/AmsRouter.cpp")
+        .file("deps/ADS/AdsLib/standalone/NotificationDispatcher.cpp")
         .file("deps/ADS/AdsLib/AdsDef.cpp")
-        .file("deps/ADS/AdsLib/AdsLib.cpp")
-        .file("deps/ADS/AdsLib/AmsConnection.cpp")
-        .file("deps/ADS/AdsLib/AmsPort.cpp")
-        .file("deps/ADS/AdsLib/AmsRouter.cpp")
         .file("deps/ADS/AdsLib/Frame.cpp")
         .file("deps/ADS/AdsLib/Log.cpp")
-        .file("deps/ADS/AdsLib/NotificationDispatcher.cpp")
         .file("deps/ADS/AdsLib/Sockets.cpp")
         .include("deps/ADS/AdsLib")
+        .include("deps/ADS/AdsLib/standalone")
         .compile("libads.a");
 }

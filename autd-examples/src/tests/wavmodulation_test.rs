@@ -4,7 +4,7 @@
  * Created Date: 12/12/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 25/05/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -18,9 +18,9 @@ use std::ffi::OsString;
 use autd::prelude::*;
 use autd_wav_modulation::WavModulation;
 
-pub fn wav_modulation_test(autd: &mut AUTD) -> Result<(), Box<dyn Error>> {
-    let g = FocalPointGain::create(Vector3::new(90., 70., 150.));
-    autd.append_gain_sync(g);
+pub fn wav_modulation_test<L: Link>(autd: &mut AUTD<L>) -> Result<(), Box<dyn Error>> {
+    let mut g = FocalPointGain::create(Vector3::new(90., 70., 150.));
+    autd.append_gain_sync(&mut g)?;
 
     let path = OsString::from("sine.wav");
     // write 150 Hz sine wave
@@ -40,8 +40,8 @@ pub fn wav_modulation_test(autd: &mut AUTD) -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let m = WavModulation::create(&path, 8, hound::SampleFormat::Int).unwrap();
-    autd.append_modulation_sync(m);
+    let mut m = WavModulation::create(&path, 8, hound::SampleFormat::Int).unwrap();
+    autd.append_modulation_sync(&mut m)?;
 
     Ok(())
 }

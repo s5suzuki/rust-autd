@@ -4,15 +4,17 @@
  * Created Date: 21/11/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/08/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
  *
  */
 
-use std::fmt;
-use std::sync::atomic::{self, AtomicU8};
+use std::{
+    fmt,
+    sync::atomic::{self, AtomicU8},
+};
 
 use super::consts::*;
 
@@ -34,6 +36,7 @@ pub enum CommandType {
     CmdInitRefClock = 0x07,
     CmdCalibSeqClock = 0x08,
     CmdClear = 0x09,
+    SetDelay = 0x0A,
 }
 
 #[repr(C)]
