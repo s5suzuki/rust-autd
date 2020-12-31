@@ -1,6 +1,6 @@
 [package]
 name = "autd-twincat-link"
-version = "8.0.0"
+version = "8.0.1"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -19,7 +19,7 @@ exclude = [
 libc = "0.2"
 libloading = "0.6.6"
 lazy_static = "1.4"
-autd = {path="../autd", version="8"}
+autd = {path="../autd", version="8.0.1"}
 
 [build-dependencies]
 cc = "1.0"

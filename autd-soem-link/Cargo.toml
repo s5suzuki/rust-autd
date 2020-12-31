@@ -1,6 +1,6 @@
 [package]
 name = "autd-soem-link"
-version = "8.0.0"
+version = "8.0.1"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -17,7 +17,7 @@ exclude = [
 
 [dependencies]
 libc = "0.2"
-autd = {path="../autd", version="8"}
+autd = {path="../autd", version="8.0.1"}
 autd-timer = {path="../autd-timer", version="2.0.0"}
 
 [target.'cfg(windows)'.dependencies]

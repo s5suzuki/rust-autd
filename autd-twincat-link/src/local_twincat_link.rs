@@ -116,8 +116,4 @@ impl Link for LocalTwinCATLink {
     fn is_open(&self) -> bool {
         self.port > 0
     }
-
-    fn calibrate(&mut self) -> Result<bool, Box<dyn Error>> {
-        unreachable!("This method is no longer necessary after v0.5")
-    }
 }

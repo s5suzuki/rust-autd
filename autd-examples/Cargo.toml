@@ -10,6 +10,10 @@ name = "soem"
 path = "src/soem.rs"
 
 [[bin]]
+name = "debug"
+path = "src/debug.rs"
+
+[[bin]]
 name = "twincat"
 path = "src/twincat.rs"
 required-features = ["twincat"]
@@ -21,7 +25,7 @@ path = "src/two_autd.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-autd = {path="../autd", version="8"}
+autd = {path="../autd", version="8.0.1"}
 autd-soem-link = {path="../autd-soem-link", version="8"}
 autd-twincat-link  = {path="../autd-twincat-link", version="8", optional = true}
 autd-holo-gain = {path="../autd-holo-gain", version="8", optional = true}
