@@ -33,20 +33,20 @@ impl<W: Write> DebugLink<W> {
 
 impl<W: Write + Send> Link for DebugLink<W> {
     fn open(&mut self) -> Result<(), Box<dyn Error>> {
-        self.writer.write(b"Call open()\n")?;
+        self.writer.write_all(b"Call open()\n")?;
         self.is_open = true;
         Ok(())
     }
 
     fn close(&mut self) -> Result<(), Box<dyn Error>> {
-        self.writer.write(b"Call close()\n")?;
+        self.writer.write_all(b"Call close()\n")?;
         self.is_open = false;
         Ok(())
     }
 
     fn send(&mut self, data: &[u8]) -> Result<(), Box<dyn Error>> {
         self.last_msg_id = data[0];
-        self.writer.write(b"Header:\n")?;
+        self.writer.write_all(b"Header:\n")?;
         self.writer
             .write_fmt(format_args!("\t msg_id: {:x}\n", self.last_msg_id))?;
         Ok(())
