@@ -73,6 +73,7 @@ impl CsvGain {
             if idx == NUM_TRANS_IN_UNIT {
                 data.push(buf);
                 buf = unsafe { std::mem::zeroed() };
+                idx = 0;
             }
         }
         Ok(Self { data: Some(data) })
