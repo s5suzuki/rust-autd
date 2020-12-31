@@ -15,24 +15,24 @@ jobs:
     - name: publish
       run: |
         cd autd-timer
-        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
         cd autd
-        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
         cd autd-csv-gain
-        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
         cd autd-holo-gain
-        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
         cd autd-soem-link
-        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
         cd autd-twincat-link
-        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
         cd autd-wav-modulation
-        cargo publish --yes --token ${{ secrets.CRATEIO_TOKEN }}
+        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
   

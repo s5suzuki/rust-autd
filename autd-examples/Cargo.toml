@@ -26,9 +26,9 @@ path = "src/two_autd.rs"
 
 [dependencies]
 autd = {path="../autd", version="8.0.1"}
-autd-soem-link = {path="../autd-soem-link", version="8"}
-autd-twincat-link  = {path="../autd-twincat-link", version="8", optional = true}
-autd-holo-gain = {path="../autd-holo-gain", version="8", optional = true}
+autd-soem-link = {path="../autd-soem-link", version="8.0.1"}
+autd-twincat-link  = {path="../autd-twincat-link", version="8.0.1", optional = true}
+autd-holo-gain = {path="../autd-holo-gain", version="8.0.1", optional = true}
 autd-csv-gain =  {path="../autd-csv-gain", version="8", optional = true}
 autd-wav-modulation = {path="../autd-wav-modulation", version="8", optional = true}
 colored = "2.0.0"
