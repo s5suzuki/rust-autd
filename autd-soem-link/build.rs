@@ -4,7 +4,7 @@
  * Created Date: 29/08/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 16/12/2019
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -23,8 +23,8 @@ fn main() {
         "cargo:rustc-link-search={}\\deps\\SOEM\\oshw\\win32\\wpcap\\Lib\\x64",
         home_dir
     );
-    println!("cargo:rustc-link-lib=static=Packet");
-    println!("cargo:rustc-link-lib=static=wpcap");
+    println!("cargo:rustc-link-lib=Packet");
+    println!("cargo:rustc-link-lib=wpcap");
     cc::Build::new()
         .warnings(true)
         .flag("/DWIN32")

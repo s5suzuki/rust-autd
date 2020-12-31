@@ -96,7 +96,7 @@ impl Geometry {
     /// # Example
     ///
     /// ```
-    /// use std::Float::consts::PI;
+    /// use autd::PI;
     /// use autd::geometry::{Vector3, Geometry};
     ///
     /// let mut geometry: Geometry = Default::default();
