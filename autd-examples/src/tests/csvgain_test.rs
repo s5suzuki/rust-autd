@@ -27,6 +27,7 @@ pub fn csvgain_test<L: Link>(autd: &mut AUTD<L>) -> Result<(), Box<dyn Error>> {
         let y = 70.;
         let z = 150.;
         const ULTRASOUND_WAVELENGTH: Float = 8.5;
+        wtr.serialize(["amp", "phase"])?;
         for ty_idx in 0..NUM_TRANS_Y {
             for tx_idx in 0..NUM_TRANS_X {
                 if !autd::geometry::is_missing_transducer(tx_idx, ty_idx) {

@@ -122,7 +122,7 @@ impl<L: Link> AUTDLogic<L> {
         self.link.send(&body)?;
 
         let dev_num = self.geometry.num_devices();
-        if seq.sent() == seq.control_points().len() {
+        if *seq.sent() == seq.control_points().len() {
             self.wait_msg_processed(dev_num, 0xC0, 0xE0, 2000)
         } else {
             self.wait_msg_processed(dev_num, msg_id, 0xFF, 200)
@@ -439,18 +439,20 @@ impl<L: Link> AUTDLogic<L> {
         let num_devices = geometry.num_devices();
         let size = size_of::<RxGlobalHeader>() + NUM_TRANS_IN_UNIT * 2 * num_devices;
 
+        let sent = *seq.sent();
+
         let mut body = vec![0x00; size];
-        let send_size = num::clamp(seq.control_points().len() - seq.sent(), 0, 40);
+        let send_size = num::clamp(seq.control_points().len() - sent, 0, 40);
 
         let mut ctrl_flags = RxGlobalControlFlags::SEQ_MODE;
         if is_silent {
             ctrl_flags |= RxGlobalControlFlags::SILENT;
         }
 
-        if seq.sent() == 0 {
+        if sent == 0 {
             ctrl_flags |= RxGlobalControlFlags::SEQ_BEGIN;
         }
-        if seq.sent() + send_size >= seq.control_points().len() {
+        if sent + send_size >= seq.control_points().len() {
             ctrl_flags |= RxGlobalControlFlags::SEQ_END;
         }
         let msg_id = unsafe {
@@ -468,7 +470,7 @@ impl<L: Link> AUTDLogic<L> {
             for device in 0..num_devices {
                 let mut foci = Vec::with_capacity(send_size as usize * 10);
                 for i in 0..(send_size as usize) {
-                    let v64 = geometry.local_position(device, seq.control_points()[seq.sent() + i]);
+                    let v64 = geometry.local_position(device, seq.control_points()[sent + i]);
                     let x = (v64.x / fixed_num_unit) as i32 as u32;
                     let y = (v64.y / fixed_num_unit) as i32 as u32;
                     let z = (v64.z / fixed_num_unit) as i32 as u32;
@@ -490,7 +492,7 @@ impl<L: Link> AUTDLogic<L> {
                 cursor += NUM_TRANS_IN_UNIT * 2;
             }
         }
-        seq.send(send_size);
+        *seq.sent() += send_size;
         (msg_id, body)
     }
 

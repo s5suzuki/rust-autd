@@ -4,7 +4,7 @@
  * Created Date: 30/12/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/12/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -61,7 +61,7 @@ impl<L: Link> SyncController<L> {
 
     pub fn append_seq(&mut self, seq: &mut PointSequence) -> Result<(), Box<dyn Error>> {
         let mut logic = self.logic.lock().unwrap();
-        while seq.sent() < seq.control_points().len() {
+        while *seq.sent() < seq.control_points().len() {
             logic.send_seq_blocking(seq)?;
         }
         logic.calibrate_seq()?;

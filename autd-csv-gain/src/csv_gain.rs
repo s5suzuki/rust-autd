@@ -48,7 +48,7 @@ impl Error for CsvGainError {
 }
 
 pub struct CsvGain {
-    data: Option<Vec<DataArray>>,
+    data: Vec<DataArray>,
 }
 
 impl CsvGain {
@@ -76,24 +76,18 @@ impl CsvGain {
                 idx = 0;
             }
         }
-        Ok(Self { data: Some(data) })
+        Ok(Self { data })
     }
 }
 
 impl Gain for CsvGain {
     fn get_data(&self) -> &[DataArray] {
-        assert!(self.data.is_some());
-        match &self.data {
-            Some(data) => data,
-            None => panic!(),
-        }
+        &self.data
     }
 
     fn build(&mut self, geometry: &Geometry) {
         let ndevice = geometry.num_devices();
-        if let Some(data) = &mut self.data {
-            let buf: DataArray = unsafe { std::mem::zeroed() };
-            data.resize(ndevice, buf);
-        }
+        let buf: DataArray = unsafe { std::mem::zeroed() };
+        self.data.resize(ndevice, buf);
     }
 }

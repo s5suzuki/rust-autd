@@ -87,7 +87,7 @@ impl Modulation for WavModulation {
         }
 
         let mut sample_buf = Vec::with_capacity(buffer_size);
-        for i in 0..sample_buf.len() {
+        for i in 0..self.raw_buf.len() {
             let idx = (i as f64 / freq_ratio) as usize;
             sample_buf.push(self.raw_buf[idx]);
         }

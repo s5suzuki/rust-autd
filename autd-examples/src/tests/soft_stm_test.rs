@@ -16,6 +16,8 @@ use std::error::Error;
 use autd::{prelude::*, Float, PI};
 
 pub fn soft_stm_test<L: Link>(autd: &mut AUTD<L>) -> Result<(), Box<dyn Error>> {
+    autd.set_silent_mode(false);
+
     let mut m = NoModulation::create(255);
     autd.append_modulation_sync(&mut m)?;
 

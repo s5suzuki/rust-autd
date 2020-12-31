@@ -4,14 +4,17 @@
  * Created Date: 30/12/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/12/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
  *
  */
 
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Mutex},
+};
 
 use autd_timer::Timer;
 
@@ -20,7 +23,7 @@ use crate::{link::Link, Float};
 
 pub struct STMController<L: Link> {
     logic: Arc<Mutex<AUTDLogic<L>>>,
-    stm_gains: Arc<Mutex<Vec<GainPtr>>>,
+    stm_gains: Arc<Mutex<VecDeque<GainPtr>>>,
     stm_timer: Timer,
 }
 
@@ -28,7 +31,7 @@ impl<L: Link + 'static> STMController<L> {
     pub fn new(logic: Arc<Mutex<AUTDLogic<L>>>) -> Self {
         Self {
             logic,
-            stm_gains: Arc::new(Mutex::new(Vec::new())),
+            stm_gains: Arc::new(Mutex::new(VecDeque::new())),
             stm_timer: Timer::new(),
         }
     }
@@ -36,7 +39,7 @@ impl<L: Link + 'static> STMController<L> {
     pub fn append_stm_gain(&mut self, gains: GainPtr) {
         self.stop_stm();
         let mut stm_gains = self.stm_gains.lock().unwrap();
-        stm_gains.push(gains);
+        stm_gains.push_back(gains);
     }
 
     pub fn append_stm_gains(&mut self, gains: Vec<GainPtr>) {
@@ -56,7 +59,7 @@ impl<L: Link + 'static> STMController<L> {
         let mut stm_gains = self.stm_gains.lock().unwrap();
         let mut body_q = Vec::<Vec<u8>>::new();
         for _ in 0..stm_gains.len() {
-            if let Some(mut gain) = stm_gains.pop() {
+            if let Some(mut gain) = stm_gains.pop_front() {
                 logic.build_gain_ptr(&mut gain);
                 let (_, body) =
                     AUTDLogic::<L>::make_body_ptr(Some(gain), None, dev_num, is_silent, false);

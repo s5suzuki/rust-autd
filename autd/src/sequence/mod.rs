@@ -4,7 +4,7 @@
  * Created Date: 30/06/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/12/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -87,12 +87,8 @@ impl PointSequence {
         self.sample_freq_div
     }
 
-    pub fn sent(&self) -> usize {
-        self.sent
-    }
-
-    pub fn send(&mut self, send: usize) {
-        self.sent += send;
+    pub fn sent(&mut self) -> &mut usize {
+        &mut self.sent
     }
 
     pub fn control_points(&self) -> &[Vector3] {

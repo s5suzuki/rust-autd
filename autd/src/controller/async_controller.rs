@@ -4,7 +4,7 @@
  * Created Date: 30/12/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/12/2020
+ * Last Modified: 31/12/2020
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -120,20 +120,18 @@ impl<L: Link> AsyncController<L> {
     pub fn close(&mut self) {
         self.flush();
         if let Ok(mut run) = self.is_running.write() {
-            *run = true;
+            *run = false;
         }
         if let Some(jh) = self.build_gain_th_handle.take() {
             let (_, build_cvar) = &*self.build_gain_q;
             build_cvar.notify_one();
             jh.join().unwrap();
         }
-
         if let Some(jh) = self.build_mod_th_handle.take() {
-            let (_, build_cvar) = &*self.build_gain_q;
+            let (_, build_cvar) = &*self.build_mod_q;
             build_cvar.notify_one();
             jh.join().unwrap();
         }
-
         if let Some(jh) = self.send_th_handle.take() {
             let (_, send_cvar) = &*self.send_q;
             send_cvar.notify_one();

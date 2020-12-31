@@ -24,7 +24,7 @@ use colored::*;
 type TestFn<L> = fn(&mut AUTD<L>) -> Result<(), Box<dyn Error>>;
 
 pub fn run<L: Link>(mut autd: AUTD<L>) -> Result<(), Box<dyn Error>> {
-    autd.clear().unwrap();
+    autd.clear()?;
 
     println!("***** Firmware information *****");
     let firm_list = autd.firmware_info_list()?;
@@ -74,10 +74,10 @@ pub fn run<L: Link>(mut autd: AUTD<L>) -> Result<(), Box<dyn Error>> {
         );
 
         print!("{}", "Choose number: ".green().bold());
-        io::stdout().flush().unwrap();
+        io::stdout().flush()?;
 
         let mut s = String::new();
-        io::stdin().read_line(&mut s).unwrap();
+        io::stdin().read_line(&mut s)?;
         let i: usize = match s.trim().parse() {
             Ok(num) if num < examples.len() => num,
             _ => break,
@@ -89,9 +89,9 @@ pub fn run<L: Link>(mut autd: AUTD<L>) -> Result<(), Box<dyn Error>> {
             Ok(_) => {
                 println!("press any key to finish...");
                 let mut input = String::new();
-                io::stdin().read_line(&mut input).unwrap();
+                io::stdin().read_line(&mut input)?;
                 autd.stop()?;
-                autd.clear().unwrap();
+                autd.clear()?;
                 println!("finish");
             }
             Err(e) => {
@@ -99,6 +99,9 @@ pub fn run<L: Link>(mut autd: AUTD<L>) -> Result<(), Box<dyn Error>> {
             }
         }
     }
+
+    autd.clear()?;
+    autd.close()?;
 
     Ok(())
 }

@@ -27,7 +27,7 @@ use crate::{
 const EPS_1: Float = 1e-8;
 const EPS_2: Float = 1e-8;
 const TAU: Float = 1e-3;
-const K_MAX: usize = 200;
+const K_MAX: usize = 5;
 
 /// References
 /// * K.Levenberg, “A method for the solution of certain non-linear problems in least squares,” Quarterly of applied mathematics, vol.2, no.2, pp.164–168, 1944.

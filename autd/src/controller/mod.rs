@@ -133,6 +133,7 @@ impl<L: Link + 'static> AUTD<L> {
         gain: &mut G,
         wait: bool,
     ) -> Result<(), Box<dyn Error>> {
+        self.stm_cnt.stop_stm();
         if wait {
             self.sync_cnt.append_gain_blocking(gain)
         } else {
