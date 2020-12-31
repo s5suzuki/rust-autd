@@ -33,6 +33,13 @@ pub fn run<L: Link>(mut autd: AUTD<L>) -> Result<(), Box<dyn Error>> {
     }
     println!("********************************");
 
+    println!(
+        "{}",
+        "Make sure you connected ONLY appropriate numbers of AUTD."
+            .yellow()
+            .bold()
+    );
+
     #[allow(unused_mut)]
     let mut examples: Vec<(TestFn<L>, _)> = vec![
         (simple_test, "Single Focal Point Test"),
@@ -66,12 +73,6 @@ pub fn run<L: Link>(mut autd: AUTD<L>) -> Result<(), Box<dyn Error>> {
             println!("[{}]: {}", i, desc);
         }
         println!("[Others]: Finish");
-        println!(
-            "{}",
-            "Make sure you connected ONLY appropriate numbers of AUTD."
-                .yellow()
-                .bold()
-        );
 
         print!("{}", "Choose number: ".green().bold());
         io::stdout().flush()?;
