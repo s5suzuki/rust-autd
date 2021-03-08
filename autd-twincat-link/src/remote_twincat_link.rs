@@ -4,7 +4,7 @@
  * Created Date: 16/12/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/12/2020
+ * Last Modified: 08/03/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -59,7 +59,7 @@ impl Link for RemoteTwinCATLink {
                 return Err(From::from(ADSError::AmsNetIdParseError));
             }
 
-            let addr = if ipv4addr == "" {
+            let addr = if ipv4addr.is_empty() {
                 octets[0..4].join(".")
             } else {
                 ipv4addr.to_string()

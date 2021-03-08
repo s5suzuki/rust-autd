@@ -4,12 +4,14 @@
  * Created Date: 18/11/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/12/2020
+ * Last Modified: 08/03/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
  *
  */
+
+use na::ComplexField;
 
 use autd::{geometry::Geometry, prelude::Vector3, Float};
 

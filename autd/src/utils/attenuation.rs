@@ -4,7 +4,7 @@
  * Created Date: 14/05/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/12/2020
+ * Last Modified: 08/03/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -29,7 +29,8 @@ const T01: Float = 273.16;
 /// * `t` - An atmospheric temperature [K]
 ///
 pub fn attenuation_coef(freq: Float, hr: Float, ps: Float, ps0: Float, t: Float) -> Float {
-    let psat = ps0 * (10.0 as Float).powf(-6.8346 * (T01 / t).powf(1.261) + 4.6151);
+    const TEN: Float = 10.;
+    let psat = ps0 * TEN.powf(-6.8346 * (T01 / t).powf(1.261) + 4.6151);
     let h = ps0 * (hr / ps) * (psat / ps0);
     let f_ro = (24. + 4.04e4 * h * (0.02 + h) / (0.391 + h)) / ps0;
     let f_rn = (1. / ps0)

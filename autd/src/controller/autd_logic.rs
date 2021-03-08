@@ -4,7 +4,7 @@
  * Created Date: 30/12/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/12/2020
+ * Last Modified: 08/03/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -135,12 +135,6 @@ impl<L: Link> AUTDLogic<L> {
         Ok(msg_id)
     }
 
-    pub(crate) fn send_data_blocking(&mut self, data: Vec<u8>) -> Result<bool, Box<dyn Error>> {
-        let msg_id = self.send_data(&data)?;
-        let dev_num = self.geometry.num_devices();
-        self.wait_msg_processed(dev_num, msg_id, 0xFF, 200)
-    }
-
     fn send_header_blocking(
         &mut self,
         command: CommandType,
@@ -198,33 +192,6 @@ impl<L: Link> AUTDLogic<L> {
         self.clear()?;
         self.link.close()?;
         Ok(true)
-    }
-
-    pub(crate) fn set_delay(&mut self, delays: &[DataArray]) -> Result<(), Box<dyn Error>> {
-        let dev_num = self.geometry.num_devices();
-        let size = size_of::<RxGlobalHeader>() + dev_num * 2 * NUM_TRANS_IN_UNIT;
-        let mut body = vec![0x00; size];
-
-        unsafe {
-            let header = RxGlobalHeader::new_with_cmd(CommandType::SetDelay);
-            let src_ptr = &header as *const RxGlobalHeader as *const u8;
-            let dst_ptr = body.as_mut_ptr();
-            copy_nonoverlapping(src_ptr, dst_ptr, size_of::<RxGlobalHeader>());
-            header.msg_id
-        };
-
-        let mut cursor = size_of::<RxGlobalHeader>();
-        let byte_size = NUM_TRANS_IN_UNIT * 2;
-        unsafe {
-            for delay in delays {
-                let dst_ptr = body.as_mut_ptr().add(cursor);
-                copy_nonoverlapping(delay.as_ptr() as *const u8, dst_ptr, byte_size);
-                cursor += byte_size;
-            }
-        }
-        self.send_data_blocking(body)?;
-
-        Ok(())
     }
 
     #[allow(clippy::needless_range_loop)]

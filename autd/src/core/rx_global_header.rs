@@ -4,7 +4,7 @@
  * Created Date: 21/11/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/12/2020
+ * Last Modified: 08/03/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -36,7 +36,6 @@ pub enum CommandType {
     CmdInitRefClock = 0x07,
     CmdCalibSeqClock = 0x08,
     CmdClear = 0x09,
-    SetDelay = 0x0A,
 }
 
 #[repr(C)]
@@ -79,11 +78,14 @@ impl RxGlobalHeader {
 
     pub fn new_op(ctrl_flag: RxGlobalControlFlags, data: &[u8]) -> RxGlobalHeader {
         MSG_ID.fetch_add(1, atomic::Ordering::SeqCst);
-        MSG_ID.compare_and_swap(
-            OP_MODE_MSG_ID_MAX + 1,
-            OP_MODE_MSG_ID_MIN,
-            atomic::Ordering::SeqCst,
-        );
+        MSG_ID
+            .compare_exchange(
+                OP_MODE_MSG_ID_MAX + 1,
+                OP_MODE_MSG_ID_MIN,
+                atomic::Ordering::SeqCst,
+                atomic::Ordering::Acquire,
+            )
+            .unwrap();
 
         let mut data_array = [0x00; MOD_FRAME_SIZE];
         data_array[..data.len()].clone_from_slice(&data[..]);
@@ -101,11 +103,14 @@ impl RxGlobalHeader {
 
     pub fn new_seq(ctrl_flag: RxGlobalControlFlags, seq_size: u16, seq_div: u16) -> RxGlobalHeader {
         MSG_ID.fetch_add(1, atomic::Ordering::SeqCst);
-        MSG_ID.compare_and_swap(
-            OP_MODE_MSG_ID_MAX + 1,
-            OP_MODE_MSG_ID_MIN,
-            atomic::Ordering::SeqCst,
-        );
+        MSG_ID
+            .compare_exchange(
+                OP_MODE_MSG_ID_MAX + 1,
+                OP_MODE_MSG_ID_MIN,
+                atomic::Ordering::SeqCst,
+                atomic::Ordering::Acquire,
+            )
+            .unwrap();
 
         RxGlobalHeader {
             msg_id: MSG_ID.load(atomic::Ordering::SeqCst),

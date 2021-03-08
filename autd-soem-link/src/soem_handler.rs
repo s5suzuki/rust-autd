@@ -4,7 +4,7 @@
  * Created Date: 30/08/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/12/2020
+ * Last Modified: 08/03/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -309,7 +309,9 @@ impl RuSOEM {
     #[inline]
     fn rt_thread() {
         unsafe {
-            if !RTTHREAD_LOCK.compare_and_swap(false, true, Ordering::SeqCst) {
+            if let Ok(false) =
+                RTTHREAD_LOCK.compare_exchange(false, true, Ordering::SeqCst, Ordering::Acquire)
+            {
                 let pre = SEND_COND.load(Ordering::Acquire);
                 ec_send_processdata();
                 if !pre {

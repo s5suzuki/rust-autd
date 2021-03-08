@@ -4,7 +4,7 @@
  * Created Date: 16/12/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 22/05/2020
+ * Last Modified: 08/03/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -83,6 +83,6 @@ impl TcAds {
 }
 
 lazy_static! {
-    static ref DLL: lib::Library = lib::Library::new("TcAdsDll").unwrap();
+    static ref DLL: lib::Library = unsafe { lib::Library::new("TcAdsDll").unwrap() };
     pub static ref TC_ADS: TcAds = TcAds::new();
 }

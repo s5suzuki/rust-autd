@@ -4,7 +4,7 @@
  * Created Date: 18/11/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/12/2020
+ * Last Modified: 08/03/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -13,7 +13,7 @@
 
 use autd::{consts::NUM_TRANS_IN_UNIT, geometry::Geometry, utils::directivity_t4010a1 as dir, PI};
 use autd::{prelude::Vector3, Float};
-use na::{Dynamic, Matrix, VecStorage, U1};
+use na::{ComplexField, Dynamic, Matrix, VecStorage, U1};
 
 pub type Complex = na::Complex<Float>;
 pub type MatrixXcf = Matrix<Complex, Dynamic, Dynamic, VecStorage<Complex, Dynamic, Dynamic>>;
@@ -34,7 +34,7 @@ pub fn propagate(
     let d = dir(theta);
     let r = d * (-dist * atten).exp() / dist;
     let phi = -wavenum * dist;
-    Complex::from_polar(r, phi)
+    r * Complex::new(0., phi).exp()
 }
 
 pub fn generate_propagation_matrix(

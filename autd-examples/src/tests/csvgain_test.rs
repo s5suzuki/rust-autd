@@ -4,7 +4,7 @@
  * Created Date: 12/12/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/12/2020
+ * Last Modified: 08/03/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -25,7 +25,7 @@ pub fn csvgain_test<L: Link>(autd: &mut AUTD<L>) -> Result<(), Box<dyn Error>> {
         let mut wtr = csv::Writer::from_path(&path).unwrap();
         let x = 90.;
         let y = 70.;
-        let z = 150.;
+        let z2 = 150. * 150.;
         const ULTRASOUND_WAVELENGTH: Float = 8.5;
         wtr.serialize(["amp", "phase"])?;
         for ty_idx in 0..NUM_TRANS_Y {
@@ -33,7 +33,7 @@ pub fn csvgain_test<L: Link>(autd: &mut AUTD<L>) -> Result<(), Box<dyn Error>> {
                 if !autd::geometry::is_missing_transducer(tx_idx, ty_idx) {
                     let tx = tx_idx as Float * TRANS_SIZE;
                     let ty = ty_idx as Float * TRANS_SIZE;
-                    let dist = ((tx - x) * (tx - x) + (ty - y) * (ty - y) + z * z).sqrt();
+                    let dist = ((tx - x) * (tx - x) + (ty - y) * (ty - y) + z2).sqrt();
                     let phase = 1.0 - (dist % ULTRASOUND_WAVELENGTH) / ULTRASOUND_WAVELENGTH;
                     let amp = 1.0;
                     wtr.serialize([amp, phase])?; // The file must consist of two columns, normalized amp and phase, with delimiter ','.

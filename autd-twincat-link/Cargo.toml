@@ -1,10 +1,10 @@
 [package]
 name = "autd-twincat-link"
-version = "8.0.1"
+version = "9.0.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
-license = "MIT"
+license-file = "LICENSE"
 description = "Link of AUTD using TwinCAT."
 repository = "https://github.com/shinolab/rust-autd"
 readme = "README.md"
@@ -17,9 +17,9 @@ exclude = [
 
 [dependencies]
 libc = "0.2"
-libloading = "0.6.6"
+libloading = "0.7.0"
 lazy_static = "1.4"
-autd = {path="../autd", version="8.0.1"}
+autd = {path="../autd", version="9.0.0"}
 
 [build-dependencies]
 cc = "1.0"

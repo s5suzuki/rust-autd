@@ -4,7 +4,7 @@
  * Created Date: 07/08/2020
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/12/2020
+ * Last Modified: 08/03/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2020 Hapis Lab. All rights reserved.
@@ -26,7 +26,6 @@ use autd_logic::AUTDLogic;
 use sync_controller::SyncController;
 
 use crate::{
-    consts::DataArray,
     core::{configuration::Configuration, FirmwareInfo},
     gain::Gain,
     geometry::Geometry,
@@ -80,10 +79,6 @@ impl<L: Link + 'static> AUTD<L> {
 
     pub fn set_silent_mode(&mut self, silent: bool) {
         self.logic().silent_mode = silent;
-    }
-
-    pub fn set_delay(&mut self, delays: &[DataArray]) -> Result<(), Box<dyn Error>> {
-        self.logic().set_delay(delays)
     }
 
     pub fn clear(&mut self) -> Result<bool, Box<dyn Error>> {

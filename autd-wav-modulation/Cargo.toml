@@ -1,6 +1,6 @@
 [package]
 name = "autd-wav-modulation"
-version = "8.0.0"
+version = "9.0.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -16,5 +16,5 @@ exclude = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-autd = {path="../autd", version="8"}
+autd = {path="../autd", version="9.0.0"}
 hound = "3.4"

@@ -4,32 +4,36 @@
 
 [autd3 library](https://github.com/shinolab/autd3-library-software) for Rust
 
-version: 8.0.0
+version: 9.0.0
 
-## About Versioning
+## :memo: About Versioning
 
 This versioning is different from the [original autd3-library](https://github.com/shinolab/autd3-library-software), in line with the "Semantic Versioning" used in Rust.
 The version x.y.z in the original corresponds to the y.z.* of the crate.
 
-## Install with Cargo
+## :hammer_and_wrench: Install with Cargo
 
 ```
 [dependencies]
-autd = "8.0.0"
+autd = "9.0.0"
 ```
 
-## Requirements
+## :ballot_box_with_check: Requirements
 
-If you are using Windows, install [Npcap](https://nmap.org/npcap/) with WinPcap API-compatible mode (recomennded) or [WinPcap](https://www.winpcap.org/).
+If you use Windows and `SOEMLink`, install [Npcap](https://nmap.org/npcap/) with WinPcap API-compatible mode (recomennded) or [WinPcap](https://www.winpcap.org/).
 
-## documents ##
+## :green_book: Documents
 
 * Documents is [here](https://docs.rs/autd/8.0.0/autd/).
 
-## Examples
+## :beginner: Example
 
 See [examples](autd-examples)
 
+## :copyright: LICENSE
+
+See [LICENSE](./LICENSE) and [NOTICE](./NOTICE).
+
 # Author
 
-Shun Suzuki, 2019-2020
+Shun Suzuki, 2019-2021

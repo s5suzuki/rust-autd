@@ -1,10 +1,10 @@
 [package]
 name = "autd-soem-link"
-version = "8.0.1"
+version = "9.0.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
-license = "MIT"
+license-file = "LICENSE"
 description = "Link of AUTD using SOEM."
 repository = "https://github.com/shinolab/rust-autd"
 readme = "README.md"
@@ -17,7 +17,7 @@ exclude = [
 
 [dependencies]
 libc = "0.2"
-autd = {path="../autd", version="8.0.1"}
+autd = {path="../autd", version="9.0.0"}
 autd-timer = {path="../autd-timer", version="2.0.0"}
 
 [target.'cfg(windows)'.dependencies]
