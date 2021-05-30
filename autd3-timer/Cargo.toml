@@ -1,0 +1,29 @@
+[package]
+name = "autd3-timer"
+version = "1.0.0"
+authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
+edition = "2018"
+
+license = "MIT"
+description = "Native timer wrapper."
+repository = "https://github.com/shinolab/rust-autd"
+readme = "README.md"
+keywords = ["autd"]
+exclude = [
+    ".github/*",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+cc = "1.0"
+
+[dependencies]
+libc = "0.2"
+thiserror = "1.0.25"
+
+[target.'cfg(windows)'.dependencies]
+windows = "0.10.0"
+
+[target.'cfg(windows)'.build-dependencies]
+windows = "0.10.0"

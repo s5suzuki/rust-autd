@@ -1,0 +1,34 @@
+name: build
+
+on:
+  push:
+    tags-ignore:
+      - v*
+    branches:
+      - 'dev'
+
+jobs:
+  build:
+    name: build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Checkout submodules
+      run: git submodule update --init --force --recursive
+    - name: Build
+      run: cargo build --workspace --verbose --exclude autd3-soem-link
+    - name: Run tests
+      run: cargo test --workspace --exclude autd3-soem-link
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Checkout submodules
+      run: git submodule update --init --force --recursive
+    - name: lint
+      run: cargo clippy --all-targets --all-features -- -D warnings
