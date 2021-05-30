@@ -20,9 +20,9 @@ jobs:
     - name: Checkout submodules
       run: git submodule update --init --force --recursive
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --workspace --verbose --exclude autd3-soem-link
     - name: Run tests
-      run: cargo test --workspace
+      run: cargo test --workspace --exclude autd3-soem-link
 
   lint:
     runs-on: ubuntu-latest

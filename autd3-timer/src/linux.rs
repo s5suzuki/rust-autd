@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 28/05/2021
+ * Last Modified: 30/05/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -32,7 +32,7 @@ extern "C" {
 }
 
 const SIGRTMIN: c_int = 34;
-type WAITORTIMERCALLBACK = unsafe extern "C" fn(c_int, *mut siginfo_t, *mut c_void);
+type Waitortimercallback = unsafe extern "C" fn(c_int, *mut siginfo_t, *mut c_void);
 
 struct TimerHandle {
     timer: timer_t,
@@ -51,7 +51,7 @@ impl NativeTimerWrapper {
 
     pub fn start<P>(
         &mut self,
-        cb: WAITORTIMERCALLBACK,
+        cb: Waitortimercallback,
         period_ns: u32,
         lp_param: *mut P,
     ) -> Result<bool, TimerError> {
