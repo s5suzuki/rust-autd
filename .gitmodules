@@ -1,6 +1,0 @@
-[submodule "autd-soem-link/deps/SOEM"]
-	path = autd-soem-link/deps/SOEM
-	url = https://github.com/OpenEtherCATsociety/SOEM.git
-[submodule "autd-twincat-link/deps/ADS"]
-	path = autd-twincat-link/deps/ADS
-	url = https://github.com/sssssssuzuki/ADS.git
