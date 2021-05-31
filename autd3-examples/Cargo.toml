@@ -11,6 +11,11 @@ name = "soem"
 path = "src/soem.rs"
 required-features = ["soem"]
 
+[[bin]]
+name = "twincat"
+path = "src/twincat.rs"
+required-features = ["twincat"]
+
 [dependencies]
 anyhow = "1.0.40"
 autd3 = {path="../autd3", version="1.0.0"}
