@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 29/05/2021
+ * Last Modified: 03/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -51,9 +51,7 @@ impl Logic {
 
     pub fn pack_header(
         cmd: CommandType,
-        silent_mode: bool,
-        seq_mode: bool,
-        read_fpga_info: bool,
+        flag: RxGlobalControlFlags,
         data: &mut [u8],
         msg_id: &mut u8,
     ) {
@@ -61,38 +59,19 @@ impl Logic {
         *msg_id = Self::get_id();
         unsafe {
             (*header).msg_id = *msg_id;
-            (*header).ctrl_flag = RxGlobalControlFlags::NONE;
+            (*header).ctrl_flag = flag;
             (*header).mod_size = 0;
             (*header).command = cmd;
-
-            if seq_mode {
-                (*header).ctrl_flag |= RxGlobalControlFlags::SEQ_MODE;
-            }
-            if silent_mode {
-                (*header).ctrl_flag |= RxGlobalControlFlags::SILENT;
-            }
-            if read_fpga_info {
-                (*header).ctrl_flag |= RxGlobalControlFlags::READ_FPGA_INFO;
-            }
         }
     }
 
     pub fn pack_header_mod<M: Modulation>(
         modulation: &mut M,
-        silent_mode: bool,
-        seq_mode: bool,
-        read_fpga_info: bool,
+        flag: RxGlobalControlFlags,
         data: &mut [u8],
         msg_id: &mut u8,
     ) {
-        Self::pack_header(
-            CommandType::Op,
-            silent_mode,
-            seq_mode,
-            read_fpga_info,
-            data,
-            msg_id,
-        );
+        Self::pack_header(CommandType::Op, flag, data, msg_id);
         let header = data.as_mut_ptr() as *mut RxGlobalHeader;
         let mod_size = modulation.remaining().clamp(0, MOD_FRAME_SIZE);
         unsafe {

@@ -4,7 +4,7 @@
  * Created Date: 26/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/05/2021
+ * Last Modified: 03/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -14,7 +14,10 @@
 use crate::controller::{Controller, ControllerProps};
 use anyhow::Result;
 use autd3_core::{
-    ec_config::EC_OUTPUT_FRAME_SIZE, gain::Gain, hardware_defined::CommandType, link::Link,
+    ec_config::EC_OUTPUT_FRAME_SIZE,
+    gain::Gain,
+    hardware_defined::{CommandType, RxGlobalControlFlags},
+    link::Link,
     logic::Logic,
 };
 use autd3_timer::{Timer, TimerCallback};
@@ -94,9 +97,7 @@ impl<L: Link> StmController<L> {
         let mut _msg_id = 0;
         Logic::pack_header(
             CommandType::Op,
-            self.props.silent_mode,
-            false,
-            false,
+            self.ctrl_flag(),
             &mut build_buf,
             &mut _msg_id,
         );
@@ -130,6 +131,23 @@ impl<L: Link> StmController<L> {
     /// Added gains will be removed.
     pub fn finish(&mut self) {
         self.callback.clear();
+    }
+
+    fn ctrl_flag(&self) -> RxGlobalControlFlags {
+        let mut header = RxGlobalControlFlags::NONE;
+        if self.props.silent_mode {
+            header |= RxGlobalControlFlags::SILENT;
+        }
+        if self.props.seq_mode {
+            header |= RxGlobalControlFlags::SEQ_MODE;
+        }
+        if self.props.reads_fpga_info {
+            header |= RxGlobalControlFlags::READ_FPGA_INFO;
+        }
+        if self.props.force_fan {
+            header |= RxGlobalControlFlags::FORCE_FAN;
+        }
+        header
     }
 }
 

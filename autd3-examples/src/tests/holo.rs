@@ -4,7 +4,7 @@
  * Created Date: 29/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/05/2021
+ * Last Modified: 03/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -40,6 +40,7 @@ pub async fn holo<L: Link>(mut autd: Controller<L>) -> Result<Controller<L>> {
     println!("[3]: GS");
     println!("[4]: GS-PAT");
     println!("[5]: LM");
+    println!("[6]: Greedy");
     println!("[Others]: SDP");
     print!("{}", "Choose number: ".green().bold());
     io::stdout().flush()?;
@@ -69,6 +70,10 @@ pub async fn holo<L: Link>(mut autd: Controller<L>) -> Result<Controller<L>> {
         }
         Ok(5) => {
             let mut g = Lm::<NalgebraBackend>::new(foci, amps);
+            autd.send(&mut g, &mut m).await?;
+        }
+        Ok(6) => {
+            let mut g = Greedy::new(foci, amps);
             autd.send(&mut g, &mut m).await?;
         }
         _ => {
