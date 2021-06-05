@@ -4,13 +4,13 @@
 
 [autd3 library](https://github.com/shinolab/autd3-library-software) for Rust
 
-version: 1.1.0
+version: 1.2.0
 
 ## :hammer_and_wrench: Install with Cargo
 
 ```
 [dependencies]
-autd3 = "1.1.0"
+autd3 = "1.2.0"
 ```
 
 ## :ballot_box_with_check: Requirements

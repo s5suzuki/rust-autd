@@ -1,7 +1,7 @@
 /*
- * File: sine.rs
+ * File: sine_pressure.rs
  * Project: modulation
- * Created Date: 27/05/2021
+ * Created Date: 05/06/2021
  * Author: Shun Suzuki
  * -----
  * Last Modified: 05/06/2021
@@ -19,9 +19,9 @@ use autd3_traits::Modulation;
 
 use num::integer::gcd;
 
-/// Sine wave modulation in ultrasound amplitude
+/// Sine wave modulation in radiation pressure
 #[derive(Modulation)]
-pub struct Sine {
+pub struct SinePressure {
     buffer: Vec<u8>,
     sent: usize,
     freq: usize,
@@ -29,7 +29,7 @@ pub struct Sine {
     offset: f64,
 }
 
-impl Sine {
+impl SinePressure {
     /// constructor.
     ///
     /// # Arguments
@@ -75,7 +75,7 @@ impl Sine {
 
         for i in 0..n {
             let amp = self.amp / 2.0 * (2.0 * PI * (rep * i) as f64 / n as f64).sin() + self.offset;
-            let amp = amp.clamp(0.0, 1.0);
+            let amp = amp.sqrt().clamp(0.0, 1.0);
             let duty = amp.asin() * 2.0 / PI * 255.0;
             self.buffer[i] = duty as u8;
         }

@@ -4,7 +4,7 @@
  * Created Date: 03/06/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 03/06/2021
+ * Last Modified: 05/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -62,14 +62,11 @@ impl Greedy {
         let wave_num = 2.0 * std::f64::consts::PI / geometry.wavelength;
         let attenuation = geometry.attenuation;
 
-        let mut tmp = Vec::with_capacity(m);
-        tmp.resize(m, Complex::new(0., 0.));
+        let mut tmp = Vec::with_capacity(self.phases.len());
+        tmp.resize(self.phases.len(), vec![Complex::new(0., 0.); m]);
 
         let mut cache = Vec::with_capacity(m);
         cache.resize(m, Complex::new(0., 0.));
-
-        let mut good_field = Vec::with_capacity(m);
-        good_field.resize(m, Complex::new(0., 0.));
 
         fn transfer_foci(
             trans_pos: Vector3,
@@ -89,9 +86,9 @@ impl Greedy {
             for i in 0..NUM_TRANS_IN_UNIT {
                 let trans_pos = geometry.position_by_local_idx(dev, i);
                 let trans_dir = geometry.direction(dev);
-                let mut min_phase = Complex::new(0., 0.);
+                let mut min_idx = 0;
                 let mut min_v = std::f64::INFINITY;
-                for &phase in self.phases.iter() {
+                for (idx, &phase) in self.phases.iter().enumerate() {
                     transfer_foci(
                         trans_pos,
                         trans_dir,
@@ -99,29 +96,27 @@ impl Greedy {
                         wave_num,
                         attenuation,
                         &self.foci,
-                        &mut tmp,
+                        &mut tmp[idx],
                     );
                     let mut v = 0.0;
-                    for j in 0..m {
-                        v += (self.amps[j] - (tmp[j] + cache[j]).abs()).abs();
+                    for (j, c) in cache.iter().enumerate() {
+                        v += (self.amps[j] - (tmp[idx][j] + c).abs()).abs();
                     }
 
                     if v < min_v {
                         min_v = v;
-                        min_phase = phase;
-                        unsafe {
-                            std::ptr::copy_nonoverlapping(tmp.as_ptr(), good_field.as_mut_ptr(), m);
-                        }
+                        min_idx = idx;
                     }
                 }
 
-                for j in 0..m {
-                    cache[j] += good_field[j];
+                for (j, c) in cache.iter_mut().enumerate() {
+                    *c += tmp[min_idx][j];
                 }
 
                 const DUTY: u16 = 0xFF00;
                 let phase = ((1.0
-                    - (min_phase.argument() + std::f64::consts::PI) / (2.0 * std::f64::consts::PI))
+                    - (self.phases[min_idx].argument() + std::f64::consts::PI)
+                        / (2.0 * std::f64::consts::PI))
                     * 255.0) as u16;
                 self.data[dev][i] = DUTY | phase;
             }
