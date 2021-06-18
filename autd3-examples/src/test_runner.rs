@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 29/05/2021
+ * Last Modified: 18/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -23,7 +23,6 @@ pub async fn run<L: Link>(autd: Controller<L>) -> Result<()> {
     let mut autd = autd;
 
     autd.clear().await?;
-    autd.synchronize(Configuration::default()).await?;
 
     println!("***** Firmware information *****");
     let firm_list = autd.firmware_infos().await?;

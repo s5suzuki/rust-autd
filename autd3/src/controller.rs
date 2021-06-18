@@ -4,7 +4,7 @@
  * Created Date: 25/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 03/06/2021
+ * Last Modified: 18/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -18,12 +18,11 @@ use crate::{
 };
 use anyhow::Result;
 use autd3_core::{
-    configuration::Configuration,
     ec_config::{EC_DEVICE_PER_FRAME, EC_INPUT_FRAME_SIZE, EC_OUTPUT_FRAME_SIZE, EC_TRAFFIC_DELAY},
     firmware_version::FirmwareInfo,
     gain::Gain,
     geometry::Geometry,
-    hardware_defined::{CommandType, DataArray, RxGlobalControlFlags, RxGlobalHeader},
+    hardware_defined::{CommandType, RxGlobalControlFlags, RxGlobalHeader, NUM_TRANS_IN_UNIT},
     link::Link,
     logic::Logic,
     modulation::Modulation,
@@ -33,7 +32,6 @@ use core::time;
 use std::thread;
 
 pub(crate) struct ControllerProps {
-    pub(crate) config: Configuration,
     pub(crate) geometry: Geometry,
     pub(crate) silent_mode: bool,
     pub(crate) reads_fpga_info: bool,
@@ -44,7 +42,6 @@ pub(crate) struct ControllerProps {
 /// Controller for AUTD3
 pub struct Controller<L: Link> {
     link: L,
-    config: Configuration,
     geometry: Geometry,
     /// Silent mode flag. Default is true. **The flags in the actual devices will be update after [update_ctrl_flags](#method.update_ctrl_flags) or [send](#method.send) functions is called.**
     pub silent_mode: bool,
@@ -63,7 +60,6 @@ impl<L: Link> Controller<L> {
         let num_devices = props.geometry.num_devices();
         Self {
             link,
-            config: props.config,
             geometry: props.geometry,
             silent_mode: props.silent_mode,
             reads_fpga_info: props.reads_fpga_info,
@@ -88,7 +84,6 @@ impl<L: Link> Controller<L> {
         Ok(Self::new(
             link,
             ControllerProps {
-                config: Configuration::default(),
                 geometry,
                 reads_fpga_info: false,
                 seq_mode: false,
@@ -130,7 +125,7 @@ impl<L: Link> Controller<L> {
     ///
     /// * `delay` -  delay for each transducer in units of ultrasound period (i.e. 25us).
     ///
-    pub async fn set_output_delay(&mut self, delay: &[DataArray]) -> Result<bool> {
+    pub async fn set_output_delay(&mut self, delay: &[[u8; NUM_TRANS_IN_UNIT]]) -> Result<bool> {
         let num_devices = self.geometry().num_devices();
         if delay.len() != num_devices {
             return Err(AutdError::DelayOutOfRange(delay.len(), num_devices).into());
@@ -153,32 +148,6 @@ impl<L: Link> Controller<L> {
         self.send_header(CommandType::Clear).await
     }
 
-    /// Synchronize the devices
-    ///
-    /// # Arguments
-    ///
-    /// * `config` - Configuration of Modulation
-    ///
-    pub async fn synchronize(&mut self, config: Configuration) -> Result<bool> {
-        self.config = config;
-        let mut msg_id = 0;
-        Logic::pack_header(
-            CommandType::ModClock,
-            self.ctrl_flag(),
-            &mut self.tx_buf,
-            &mut msg_id,
-        );
-        let mut size = 0;
-        Logic::pack_sync(
-            config,
-            self.geometry.num_devices(),
-            &mut self.tx_buf,
-            &mut size,
-        );
-        self.link.send(&self.tx_buf[0..size])?;
-        self.wait_msg_processed(msg_id, 5000).await
-    }
-
     /// Close controller
     pub async fn close(&mut self) -> Result<()> {
         self.stop().await?;
@@ -199,7 +168,7 @@ impl<L: Link> Controller<L> {
     /// * `m` - Modulation
     ///
     pub async fn send<G: Gain, M: Modulation>(&mut self, g: &mut G, m: &mut M) -> Result<bool> {
-        m.build(self.config)?;
+        m.build()?;
 
         self.seq_mode = false;
         g.build(&self.geometry)?;
@@ -251,7 +220,7 @@ impl<L: Link> Controller<L> {
     /// * `m` - Modulation
     ///
     pub async fn send_modulation<M: Modulation>(&mut self, m: &mut M) -> Result<bool> {
-        m.build(self.config)?;
+        m.build()?;
 
         let size = std::mem::size_of::<RxGlobalHeader>();
         loop {
@@ -335,7 +304,6 @@ impl<L: Link> Controller<L> {
         StmController {
             callback: StmTimerCallback::new(self.link),
             props: ControllerProps {
-                config: self.config,
                 geometry: self.geometry,
                 reads_fpga_info: self.reads_fpga_info,
                 seq_mode: self.seq_mode,

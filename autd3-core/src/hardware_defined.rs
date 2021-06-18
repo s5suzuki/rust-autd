@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 03/06/2021
+ * Last Modified: 18/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -25,11 +25,11 @@ pub fn is_missing_transducer(x: usize, y: usize) -> bool {
 pub const FPGA_CLOCK: usize = 20400000;
 pub const ULTRASOUND_FREQUENCY: usize = 40000;
 
-pub const MOD_BUF_SIZE_MAX: u16 = 32000;
+pub const MOD_BUF_SIZE_MAX: usize = 65536;
 pub const MOD_SAMPLING_FREQ_BASE: f64 = 40000.0;
 pub const MOD_FRAME_SIZE: usize = 124;
 
-pub const POINT_SEQ_BUFFER_SIZE_MAX: usize = 40000;
+pub const POINT_SEQ_BUFFER_SIZE_MAX: usize = 65536;
 pub const POINT_SEQ_CLK_IDX_MAX: usize = 40000;
 pub const POINT_SEQ_BASE_FREQ: usize = 40000;
 
@@ -58,7 +58,6 @@ pub enum CommandType {
     ReadFpgaVerLsb = 0x04,
     ReadFpgaVerMsb = 0x05,
     SeqMode = 0x06,
-    ModClock = 0x07,
     Clear = 0x09,
     SetDelay = 0x0A,
 }
@@ -74,20 +73,18 @@ pub struct RxGlobalHeader {
 
 #[repr(C)]
 pub(crate) struct SeqFocus {
-    buf: [u8; 10],
+    buf: [u16; 4],
 }
 
 impl SeqFocus {
     pub(crate) fn set(&mut self, x: i32, y: i32, z: i32, duty: u8) {
-        self.set_pos(0, x);
-        self.set_pos(3, y);
-        self.set_pos(6, z);
-        self.buf[9] = duty;
-    }
-
-    fn set_pos(&mut self, offset: usize, v: i32) {
-        self.buf[offset] = (v & 0xFF) as u8;
-        self.buf[offset + 1] = ((v >> 8) & 0xFF) as u8;
-        self.buf[offset + 2] = ((v >> 24) & 0x80) as u8 | ((v >> 16) & 0x7F) as u8;
+        self.buf[0] = (x & 0xFFFF) as u16;
+        self.buf[1] =
+            ((y << 2) & 0xFFFC) as u16 | ((x >> 30) & 0x0002) as u16 | ((x >> 16) & 0x0001) as u16;
+        self.buf[2] =
+            ((z << 4) & 0xFFF0) as u16 | ((y >> 28) & 0x0008) as u16 | ((y >> 14) & 0x0007) as u16;
+        self.buf[3] = (((duty as u16) << 6) & 0x3FC0) as u16
+            | ((z >> 26) & 0x0020) as u16
+            | ((z >> 12) & 0x001F) as u16;
     }
 }

@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 05/06/2021
+ * Last Modified: 18/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -14,7 +14,7 @@
 use std::f64::consts::PI;
 
 use anyhow::Result;
-use autd3_core::{configuration::Configuration, modulation::Modulation};
+use autd3_core::modulation::Modulation;
 use autd3_traits::Modulation;
 
 use num::integer::gcd;
@@ -27,6 +27,7 @@ pub struct Sine {
     freq: usize,
     amp: f64,
     offset: f64,
+    sampling_freq_div: u16,
 }
 
 impl Sine {
@@ -56,19 +57,19 @@ impl Sine {
             freq,
             amp,
             offset,
+            sampling_freq_div: 10,
         }
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    fn calc(&mut self, config: Configuration) -> Result<()> {
-        let sf = config.mod_sampling_frequency() as usize;
-        let mod_buf_size = config.mod_buf_size() as usize;
+    fn calc(&mut self) -> Result<()> {
+        let sf = self.sampling_freq() as usize;
 
         let freq = self.freq.clamp(1, sf / 2);
 
         let d = gcd(sf, freq);
 
-        let n = mod_buf_size / d / (mod_buf_size / sf);
+        let n = sf / d;
         let rep = freq / d;
 
         self.buffer.resize(n, 0);

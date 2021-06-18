@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 03/06/2021
+ * Last Modified: 18/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -14,12 +14,11 @@
 use std::sync::atomic::{self, AtomicU8};
 
 use crate::{
-    configuration::Configuration,
     ec_config::{EC_OUTPUT_FRAME_SIZE, HEADER_SIZE},
     gain::Gain,
     geometry::Geometry,
     hardware_defined::{
-        CommandType, DataArray, RxGlobalControlFlags, RxGlobalHeader, SeqFocus, MOD_FRAME_SIZE,
+        CommandType, RxGlobalControlFlags, RxGlobalHeader, SeqFocus, MOD_FRAME_SIZE,
         NUM_TRANS_IN_UNIT,
     },
     modulation::Modulation,
@@ -72,23 +71,28 @@ impl Logic {
         msg_id: &mut u8,
     ) {
         Self::pack_header(CommandType::Op, flag, data, msg_id);
-        let header = data.as_mut_ptr() as *mut RxGlobalHeader;
-        let mod_size = modulation.remaining().clamp(0, MOD_FRAME_SIZE);
         unsafe {
-            (*header).mod_size = mod_size as u8;
+            let header = data.as_mut_ptr() as *mut RxGlobalHeader;
+            let mut offset = 0;
             if modulation.sent() == 0 {
                 (*header).ctrl_flag |= RxGlobalControlFlags::MOD_BEGIN;
+                (*header).mod_data[0] = (modulation.sampling_frequency_division() & 0xFF) as u8;
+                (*header).mod_data[1] =
+                    (modulation.sampling_frequency_division() >> 8 & 0xFF) as u8;
+                offset += 2;
             }
+            let mod_size = modulation.remaining().clamp(0, MOD_FRAME_SIZE - offset);
+            (*header).mod_size = mod_size as u8;
             if modulation.sent() + mod_size >= modulation.buffer().len() {
                 (*header).ctrl_flag |= RxGlobalControlFlags::MOD_END;
             }
             std::ptr::copy_nonoverlapping(
                 modulation.head(),
-                (*header).mod_data.as_mut_ptr(),
+                (*header).mod_data.as_mut_ptr().add(offset),
                 mod_size,
             );
+            modulation.send(mod_size);
         }
-        modulation.send(mod_size);
     }
 
     pub fn pack_body<G: Gain>(gain: &G, data: &mut [u8], size: &mut usize) {
@@ -121,27 +125,39 @@ impl Logic {
         *size = std::mem::size_of::<RxGlobalHeader>()
             + std::mem::size_of::<u16>() * NUM_TRANS_IN_UNIT * num_devices;
 
-        let send_size = seq.remaining().clamp(
-            0,
-            (EC_OUTPUT_FRAME_SIZE - HEADER_SIZE) / std::mem::size_of::<SeqFocus>(),
-        );
-
         let header = data.as_mut_ptr() as *mut RxGlobalHeader;
+        let mut offset = 1;
         unsafe {
+            let mut cursor =
+                data.as_mut_ptr().add(std::mem::size_of::<RxGlobalHeader>()) as *mut u16;
+
             if seq.sent() == 0 {
                 (*header).ctrl_flag |= RxGlobalControlFlags::SEQ_BEGIN;
+                for i in 0..num_devices {
+                    cursor
+                        .add(i * NUM_TRANS_IN_UNIT + 1)
+                        .write(seq.sampling_freq_div());
+                    cursor
+                        .add(i * NUM_TRANS_IN_UNIT + 2)
+                        .write((geometry.wavelength * 1000.0) as u16);
+                }
+                offset += 4;
             }
+
+            let send_size = seq.remaining().clamp(
+                0,
+                (EC_OUTPUT_FRAME_SIZE - HEADER_SIZE - offset * std::mem::size_of::<u16>())
+                    / std::mem::size_of::<SeqFocus>(),
+            );
+
             if seq.sent() + send_size >= seq.control_points().len() {
                 (*header).ctrl_flag |= RxGlobalControlFlags::SEQ_END;
             }
-            let mut cursor =
-                data.as_mut_ptr().add(std::mem::size_of::<RxGlobalHeader>()) as *mut u16;
+
             let fixed_num_unit = 255.0 / geometry.wavelength;
             for device in 0..num_devices {
                 std::ptr::write(cursor, send_size as u16);
-                std::ptr::write(cursor.add(1), seq.sampling_freq_div());
-                std::ptr::write(cursor.add(2), (geometry.wavelength * 1000.0) as u16);
-                let mut focus_cursor = cursor.add(4) as *mut SeqFocus;
+                let mut focus_cursor = cursor.add(offset) as *mut SeqFocus;
                 for i in 0..send_size {
                     let v64 = geometry.local_position(device, seq.control_points()[seq.sent() + i]);
                     let x = v64[0] * fixed_num_unit;
@@ -152,33 +168,26 @@ impl Logic {
                 }
                 cursor = cursor.add(NUM_TRANS_IN_UNIT);
             }
-        }
-        seq.send(send_size);
-    }
-
-    pub fn pack_sync(config: Configuration, num_devices: usize, data: &mut [u8], size: &mut usize) {
-        *size = std::mem::size_of::<RxGlobalHeader>()
-            + std::mem::size_of::<u16>() * NUM_TRANS_IN_UNIT * num_devices;
-        unsafe {
-            let mut cursor =
-                data.as_mut_ptr().add(std::mem::size_of::<RxGlobalHeader>()) as *mut u16;
-            for _ in 0..num_devices {
-                std::ptr::write(cursor, config.mod_buf_size());
-                std::ptr::write(cursor.add(1), config.mod_sampling_frequency_division());
-                cursor = cursor.add(NUM_TRANS_IN_UNIT);
-            }
+            seq.send(send_size);
         }
     }
 
-    pub fn pack_delay(delays: &[DataArray], num_devices: usize, data: &mut [u8], size: &mut usize) {
+    pub fn pack_delay(
+        delays: &[[u8; NUM_TRANS_IN_UNIT]],
+        num_devices: usize,
+        data: &mut [u8],
+        size: &mut usize,
+    ) {
         *size = std::mem::size_of::<RxGlobalHeader>()
             + std::mem::size_of::<u16>() * NUM_TRANS_IN_UNIT * num_devices;
         unsafe {
             let mut cursor =
                 data.as_mut_ptr().add(std::mem::size_of::<RxGlobalHeader>()) as *mut u16;
             for delay in delays {
-                std::ptr::copy_nonoverlapping(delay.as_ptr(), cursor, NUM_TRANS_IN_UNIT);
-                cursor = cursor.add(NUM_TRANS_IN_UNIT);
+                for &d in delay.iter() {
+                    cursor.write(d as u16);
+                    cursor = cursor.add(1);
+                }
             }
         }
     }
