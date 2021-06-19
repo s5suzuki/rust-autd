@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 28/05/2021
+ * Last Modified: 19/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -80,7 +80,7 @@ pub fn set_from_complex_drive(
             drive[j].abs() / max_coefficient
         };
         let f_phase = drive[j].argument() / (2.0 * PI) + 0.5;
-        let phase = ((1.0 - f_phase) * 255.0) as u16;
+        let phase = (((1.0 - f_phase) * 256.0) as u16) & 0xFF;
         let duty = ((adjust_amp(f_amp) as u16) << 8) & 0xFF00;
         data[dev_idx][trans_idx] = duty | phase;
         trans_idx += 1;

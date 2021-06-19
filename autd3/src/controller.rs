@@ -4,7 +4,7 @@
  * Created Date: 25/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 18/06/2021
+ * Last Modified: 19/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -13,7 +13,6 @@
 
 use crate::{
     error::AutdError,
-    gain,
     stm_controller::{StmController, StmTimerCallback},
 };
 use anyhow::Result;
@@ -28,7 +27,6 @@ use autd3_core::{
     modulation::Modulation,
     sequence::PointSequence,
 };
-use core::time;
 use std::thread;
 
 pub(crate) struct ControllerProps {
@@ -53,6 +51,7 @@ pub struct Controller<L: Link> {
     tx_buf: Vec<u8>,
     rx_buf: Vec<u8>,
     fpga_infos: Vec<u8>,
+    delay_enables: Vec<[u16; NUM_TRANS_IN_UNIT]>,
 }
 
 impl<L: Link> Controller<L> {
@@ -68,6 +67,7 @@ impl<L: Link> Controller<L> {
             tx_buf: vec![0x00; num_devices * EC_OUTPUT_FRAME_SIZE],
             rx_buf: vec![0x00; num_devices * EC_INPUT_FRAME_SIZE],
             fpga_infos: vec![0x00; num_devices],
+            delay_enables: vec![[0xFF00; NUM_TRANS_IN_UNIT]; num_devices],
         }
     }
 
@@ -130,17 +130,79 @@ impl<L: Link> Controller<L> {
         if delay.len() != num_devices {
             return Err(AutdError::DelayOutOfRange(delay.len(), num_devices).into());
         }
-        let mut msg_id = 0;
-        Logic::pack_header(
-            CommandType::SetDelay,
-            self.ctrl_flag(),
-            &mut self.tx_buf,
-            &mut msg_id,
-        );
-        let mut size = 0;
-        Logic::pack_delay(delay, num_devices, &mut self.tx_buf, &mut size);
-        self.link.send(&self.tx_buf[0..size])?;
-        self.wait_msg_processed(msg_id, 50).await
+
+        for (dev, d) in delay.iter().enumerate() {
+            for (i, &v) in d.iter().enumerate() {
+                self.delay_enables[dev][i] = (self.delay_enables[dev][i] & 0xFF00) | v as u16;
+            }
+        }
+        self.send_delay_enable().await
+    }
+
+    /// Set output enable
+    ///
+    /// # Arguments
+    ///
+    /// * `enable` -  enable flag for each transducer
+    ///
+    pub async fn set_enable(&mut self, enable: &[[bool; NUM_TRANS_IN_UNIT]]) -> Result<bool> {
+        let num_devices = self.geometry().num_devices();
+        if enable.len() != num_devices {
+            return Err(AutdError::DelayOutOfRange(enable.len(), num_devices).into());
+        }
+        for (dev, e) in enable.iter().enumerate() {
+            for (i, &v) in e.iter().enumerate() {
+                self.delay_enables[dev][i] =
+                    (self.delay_enables[dev][i] & 0x00FF) | if v { 0xFF00 } else { 0x0000 };
+            }
+        }
+        self.send_delay_enable().await
+    }
+
+    /// Set output enable
+    ///
+    /// # Arguments
+    ///
+    /// * `enable` -  enable flag (the first bit is used) for each transducer
+    ///
+    pub async fn set_enable_u8(&mut self, enable: &[[u8; NUM_TRANS_IN_UNIT]]) -> Result<bool> {
+        let num_devices = self.geometry().num_devices();
+        if enable.len() != num_devices {
+            return Err(AutdError::DelayOutOfRange(enable.len(), num_devices).into());
+        }
+        for (dev, e) in enable.iter().enumerate() {
+            for (i, &v) in e.iter().enumerate() {
+                self.delay_enables[dev][i] =
+                    (self.delay_enables[dev][i] & 0x00FF) | (((v as u16) << 8) & 0xFF00);
+            }
+        }
+        self.send_delay_enable().await
+    }
+
+    /// Set output delay and enable
+    ///
+    /// # Arguments
+    ///
+    /// * `delay_enable` - lower 8bits is delay and 8-th bit is enable
+    ///
+    pub async fn set_delay_enable(
+        &mut self,
+        delay_enable: &[[u16; NUM_TRANS_IN_UNIT]],
+    ) -> Result<bool> {
+        let num_devices = self.geometry().num_devices();
+        if delay_enable.len() != num_devices {
+            return Err(AutdError::DelayOutOfRange(delay_enable.len(), num_devices).into());
+        }
+        for (dev, d) in delay_enable.iter().enumerate() {
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    d.as_ptr(),
+                    self.delay_enables[dev].as_mut_ptr(),
+                    NUM_TRANS_IN_UNIT,
+                );
+            }
+        }
+        self.send_delay_enable().await
     }
 
     /// Clear all data
@@ -156,8 +218,17 @@ impl<L: Link> Controller<L> {
 
     /// Stop outputting
     pub async fn stop(&mut self) -> Result<bool> {
-        let mut g = gain::Null::new();
-        self.send_gain(&mut g).await
+        self.send_header(CommandType::Pause).await
+    }
+
+    /// Pause outputting
+    pub async fn pause(&mut self) -> Result<bool> {
+        self.send_header(CommandType::Pause).await
+    }
+
+    /// Resume outputting
+    pub async fn resume(&mut self) -> Result<bool> {
+        self.send_header(CommandType::Resume).await
     }
 
     /// Send gain and modulation to the devices
@@ -338,6 +409,26 @@ impl<L: Link> Controller<L> {
         self.wait_msg_processed(msg_id, 50).await
     }
 
+    async fn send_delay_enable(&mut self) -> Result<bool> {
+        let mut msg_id: u8 = 0;
+        Logic::pack_header(
+            CommandType::SetDelay,
+            self.ctrl_flag(),
+            &mut self.tx_buf,
+            &mut msg_id,
+        );
+        let mut size = 0;
+        let num_devices = self.geometry().num_devices();
+        Logic::pack_delay_enable(
+            &self.delay_enables,
+            num_devices,
+            &mut self.tx_buf,
+            &mut size,
+        );
+        self.link.send(&self.tx_buf[0..size])?;
+        self.wait_msg_processed(msg_id, 50).await
+    }
+
     async fn wait_msg_processed(&mut self, msg_id: u8, max_trial: usize) -> Result<bool> {
         let num_devices = self.geometry.num_devices();
         let wait = (EC_TRAFFIC_DELAY * 1000.0 / EC_DEVICE_PER_FRAME as f64 * num_devices as f64)
@@ -349,7 +440,7 @@ impl<L: Link> Controller<L> {
             if Logic::is_msg_processed(num_devices, msg_id, &self.rx_buf) {
                 return Ok(true);
             }
-            thread::sleep(time::Duration::from_millis(wait));
+            thread::sleep(std::time::Duration::from_millis(wait));
         }
         Ok(false)
     }

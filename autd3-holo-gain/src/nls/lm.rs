@@ -4,7 +4,7 @@
  * Created Date: 29/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/05/2021
+ * Last Modified: 19/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -220,7 +220,7 @@ impl<B: Backend> Lm<B> {
         for j in 0..n {
             let duty = 0xFF00;
             let f_phase = x[j] % (2. * PI) / (2. * PI);
-            let phase = (((1. - f_phase) * 255.) as u16) & 0xFF;
+            let phase = (((1. - f_phase) * 256.) as u16) & 0xFF;
             self.data[dev_idx][trans_idx] = duty | phase;
             trans_idx += 1;
             if trans_idx == NUM_TRANS_IN_UNIT {

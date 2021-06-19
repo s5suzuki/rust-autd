@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 18/06/2021
+ * Last Modified: 19/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -60,6 +60,8 @@ pub enum CommandType {
     SeqMode = 0x06,
     Clear = 0x09,
     SetDelay = 0x0A,
+    Pause = 0x0B,
+    Resume = 0x0C,
 }
 
 #[repr(C)]

@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/05/2021
+ * Last Modified: 19/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -81,7 +81,7 @@ impl Bessel {
                 let dist =
                     self.theta.sin() * (r.x * r.x + r.y * r.y).sqrt() - self.theta.cos() * r.z;
                 let phase = (dist % wavelength) / wavelength;
-                let phase = (255.0 * (1.0 - phase)) as u16;
+                let phase = ((256.0 * (1.0 - phase)).round() as u16) & 0x00FF;
                 self.data[dev][i] = duty | phase;
             }
         }

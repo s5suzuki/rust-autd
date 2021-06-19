@@ -4,7 +4,7 @@
  * Created Date: 03/06/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 05/06/2021
+ * Last Modified: 19/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -114,10 +114,11 @@ impl Greedy {
                 }
 
                 const DUTY: u16 = 0xFF00;
-                let phase = ((1.0
+                let phase = (((1.0
                     - (self.phases[min_idx].argument() + std::f64::consts::PI)
                         / (2.0 * std::f64::consts::PI))
-                    * 255.0) as u16;
+                    * 256.0) as u16)
+                    & 0xFF;
                 self.data[dev][i] = DUTY | phase;
             }
         }

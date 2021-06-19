@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 18/06/2021
+ * Last Modified: 19/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -172,8 +172,8 @@ impl Logic {
         }
     }
 
-    pub fn pack_delay(
-        delays: &[[u8; NUM_TRANS_IN_UNIT]],
+    pub fn pack_delay_enable(
+        delay_enables: &[[u16; NUM_TRANS_IN_UNIT]],
         num_devices: usize,
         data: &mut [u8],
         size: &mut usize,
@@ -183,11 +183,9 @@ impl Logic {
         unsafe {
             let mut cursor =
                 data.as_mut_ptr().add(std::mem::size_of::<RxGlobalHeader>()) as *mut u16;
-            for delay in delays {
-                for &d in delay.iter() {
-                    cursor.write(d as u16);
-                    cursor = cursor.add(1);
-                }
+            for delay in delay_enables {
+                std::ptr::copy_nonoverlapping(delay.as_ptr(), cursor, NUM_TRANS_IN_UNIT);
+                cursor = cursor.add(NUM_TRANS_IN_UNIT);
             }
         }
     }
