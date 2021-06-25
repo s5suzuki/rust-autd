@@ -4,7 +4,7 @@
  * Created Date: 25/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 19/06/2021
+ * Last Modified: 25/06/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -13,6 +13,7 @@
 
 use crate::{
     error::AutdError,
+    gain::Null,
     stm_controller::{StmController, StmTimerCallback},
 };
 use anyhow::Result;
@@ -218,6 +219,8 @@ impl<L: Link> Controller<L> {
 
     /// Stop outputting
     pub async fn stop(&mut self) -> Result<bool> {
+        let mut null = Null::new();
+        self.send_gain(&mut null).await?;
         self.send_header(CommandType::Pause).await
     }
 

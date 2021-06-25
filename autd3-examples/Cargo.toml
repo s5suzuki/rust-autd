@@ -1,6 +1,6 @@
 [package]
 name = "autd3-examples"
-version = "1.4.0"
+version = "1.4.3"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -17,8 +17,8 @@ path = "src/twincat.rs"
 required-features = ["twincat"]
 
 [dependencies]
-anyhow = "1.0.40"
-autd3 = {path="../autd3", version="1.4.0"}
+anyhow = "1.0.41"
+autd3 = {path="../autd3", version="1.4.3"}
 autd3-soem-link = {path="../autd3-soem-link", version="1.0.0", optional = true}
 autd3-twincat-link  = {path="../autd3-twincat-link", version="1.0.0", optional = true}
 autd3-holo-gain  = {path="../autd3-holo-gain", version="1.4.0"}
