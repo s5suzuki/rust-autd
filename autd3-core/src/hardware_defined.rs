@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 19/06/2021
+ * Last Modified: 05/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -62,15 +62,16 @@ pub enum CommandType {
     SetDelay = 0x0A,
     Pause = 0x0B,
     Resume = 0x0C,
+    EmulatorSetGeometry = 0xFF,
 }
 
 #[repr(C)]
 pub struct RxGlobalHeader {
-    pub(crate) msg_id: u8,
-    pub(crate) ctrl_flag: RxGlobalControlFlags,
-    pub(crate) command: CommandType,
-    pub(crate) mod_size: u8,
-    pub(crate) mod_data: [u8; MOD_FRAME_SIZE],
+    pub msg_id: u8,
+    pub ctrl_flag: RxGlobalControlFlags,
+    pub command: CommandType,
+    pub mod_size: u8,
+    pub mod_data: [u8; MOD_FRAME_SIZE],
 }
 
 #[repr(C)]
