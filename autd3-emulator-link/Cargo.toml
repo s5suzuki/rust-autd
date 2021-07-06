@@ -1,23 +1,24 @@
 [package]
-name = "autd3"
+name = "autd3-emulator-link"
 version = "1.5.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
 license = "MIT"
-description = "AUTD library for Rust."
+description = "Link for emulator"
 repository = "https://github.com/shinolab/rust-autd"
-readme = "../README.md"
+readme = "README.md"
 keywords = ["autd"]
 exclude = [
     ".github/*",
-    "dist/*",
 ]
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [dependencies]
-anyhow = "1.0.41"
 autd3-core = {path="../autd3-core", version="1.5.0"}
-autd3-traits = {path="../autd3-traits", version="1.3.0"}
-autd3-timer = {path="../autd3-timer", version="1.0.0"}
-num = "0.4.0"
+anyhow = "1.0.40"
 thiserror = "1.0.25"
+once_cell = "1.7.2"
+libloading = "0.7.0"
+libc = "0.2.95"

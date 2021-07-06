@@ -32,6 +32,9 @@ jobs:
         cd autd3-twincat-link
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
+        cd autd3-emulator-link
+        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
+        cd .. && sleep 60
         cd autd3-holo-gain
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60

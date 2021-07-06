@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/05/2021
+ * Last Modified: 06/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -148,6 +148,18 @@ impl Geometry {
     }
 
     pub fn direction(&self, device_idx: usize) -> Vector3 {
+        self.devices[device_idx].z_direction
+    }
+
+    pub fn x_direction(&self, device_idx: usize) -> Vector3 {
+        self.devices[device_idx].x_direction
+    }
+
+    pub fn y_direction(&self, device_idx: usize) -> Vector3 {
+        self.devices[device_idx].y_direction
+    }
+
+    pub fn z_direction(&self, device_idx: usize) -> Vector3 {
         self.devices[device_idx].z_direction
     }
 }
