@@ -4,7 +4,7 @@
  * Created Date: 25/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 25/06/2021
+ * Last Modified: 06/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -52,7 +52,7 @@ pub struct Controller<L: Link> {
     tx_buf: Vec<u8>,
     rx_buf: Vec<u8>,
     fpga_infos: Vec<u8>,
-    delay_enables: Vec<[u16; NUM_TRANS_IN_UNIT]>,
+    delay_offsets: Vec<[u16; NUM_TRANS_IN_UNIT]>,
 }
 
 impl<L: Link> Controller<L> {
@@ -68,7 +68,7 @@ impl<L: Link> Controller<L> {
             tx_buf: vec![0x00; num_devices * EC_OUTPUT_FRAME_SIZE],
             rx_buf: vec![0x00; num_devices * EC_INPUT_FRAME_SIZE],
             fpga_infos: vec![0x00; num_devices],
-            delay_enables: vec![[0xFF00; NUM_TRANS_IN_UNIT]; num_devices],
+            delay_offsets: vec![[0xFF00; NUM_TRANS_IN_UNIT]; num_devices],
         }
     }
 
@@ -134,76 +134,56 @@ impl<L: Link> Controller<L> {
 
         for (dev, d) in delay.iter().enumerate() {
             for (i, &v) in d.iter().enumerate() {
-                self.delay_enables[dev][i] = (self.delay_enables[dev][i] & 0xFF00) | v as u16;
+                self.delay_offsets[dev][i] = (self.delay_offsets[dev][i] & 0xFF00) | v as u16;
             }
         }
-        self.send_delay_enable().await
+        self.send_delay_offset().await
     }
 
-    /// Set output enable
+    /// Set duty offset
     ///
     /// # Arguments
     ///
-    /// * `enable` -  enable flag for each transducer
+    /// * `offset` - duty offset for each transducer (only the first bit is used)
     ///
-    pub async fn set_enable(&mut self, enable: &[[bool; NUM_TRANS_IN_UNIT]]) -> Result<bool> {
+    pub async fn set_duty_offset(&mut self, offset: &[[u8; NUM_TRANS_IN_UNIT]]) -> Result<bool> {
         let num_devices = self.geometry().num_devices();
-        if enable.len() != num_devices {
-            return Err(AutdError::DelayOutOfRange(enable.len(), num_devices).into());
+        if offset.len() != num_devices {
+            return Err(AutdError::DelayOutOfRange(offset.len(), num_devices).into());
         }
-        for (dev, e) in enable.iter().enumerate() {
+        for (dev, e) in offset.iter().enumerate() {
             for (i, &v) in e.iter().enumerate() {
-                self.delay_enables[dev][i] =
-                    (self.delay_enables[dev][i] & 0x00FF) | if v { 0xFF00 } else { 0x0000 };
+                self.delay_offsets[dev][i] =
+                    (self.delay_offsets[dev][i] & 0x00FF) | (((v as u16) << 8) & 0xFF00);
             }
         }
-        self.send_delay_enable().await
+        self.send_delay_offset().await
     }
 
-    /// Set output enable
+    /// Set output delay and offset
     ///
     /// # Arguments
     ///
-    /// * `enable` -  enable flag (the first bit is used) for each transducer
+    /// * `delay_offset` - lower 8bits is delay and 8-th bit is offset
     ///
-    pub async fn set_enable_u8(&mut self, enable: &[[u8; NUM_TRANS_IN_UNIT]]) -> Result<bool> {
-        let num_devices = self.geometry().num_devices();
-        if enable.len() != num_devices {
-            return Err(AutdError::DelayOutOfRange(enable.len(), num_devices).into());
-        }
-        for (dev, e) in enable.iter().enumerate() {
-            for (i, &v) in e.iter().enumerate() {
-                self.delay_enables[dev][i] =
-                    (self.delay_enables[dev][i] & 0x00FF) | (((v as u16) << 8) & 0xFF00);
-            }
-        }
-        self.send_delay_enable().await
-    }
-
-    /// Set output delay and enable
-    ///
-    /// # Arguments
-    ///
-    /// * `delay_enable` - lower 8bits is delay and 8-th bit is enable
-    ///
-    pub async fn set_delay_enable(
+    pub async fn set_delay_offset(
         &mut self,
-        delay_enable: &[[u16; NUM_TRANS_IN_UNIT]],
+        delay_offset: &[[u16; NUM_TRANS_IN_UNIT]],
     ) -> Result<bool> {
         let num_devices = self.geometry().num_devices();
-        if delay_enable.len() != num_devices {
-            return Err(AutdError::DelayOutOfRange(delay_enable.len(), num_devices).into());
+        if delay_offset.len() != num_devices {
+            return Err(AutdError::DelayOutOfRange(delay_offset.len(), num_devices).into());
         }
-        for (dev, d) in delay_enable.iter().enumerate() {
+        for (dev, d) in delay_offset.iter().enumerate() {
             unsafe {
                 std::ptr::copy_nonoverlapping(
                     d.as_ptr(),
-                    self.delay_enables[dev].as_mut_ptr(),
+                    self.delay_offsets[dev].as_mut_ptr(),
                     NUM_TRANS_IN_UNIT,
                 );
             }
         }
-        self.send_delay_enable().await
+        self.send_delay_offset().await
     }
 
     /// Clear all data
@@ -412,7 +392,7 @@ impl<L: Link> Controller<L> {
         self.wait_msg_processed(msg_id, 50).await
     }
 
-    async fn send_delay_enable(&mut self) -> Result<bool> {
+    async fn send_delay_offset(&mut self) -> Result<bool> {
         let mut msg_id: u8 = 0;
         Logic::pack_header(
             CommandType::SetDelay,
@@ -422,8 +402,8 @@ impl<L: Link> Controller<L> {
         );
         let mut size = 0;
         let num_devices = self.geometry().num_devices();
-        Logic::pack_delay_enable(
-            &self.delay_enables,
+        Logic::pack_delay_offset(
+            &self.delay_offsets,
             num_devices,
             &mut self.tx_buf,
             &mut size,
