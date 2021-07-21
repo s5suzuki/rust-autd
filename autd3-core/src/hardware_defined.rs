@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 05/07/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -30,8 +30,8 @@ pub const MOD_SAMPLING_FREQ_BASE: f64 = 40000.0;
 pub const MOD_FRAME_SIZE: usize = 124;
 
 pub const POINT_SEQ_BUFFER_SIZE_MAX: usize = 65536;
-pub const POINT_SEQ_CLK_IDX_MAX: usize = 40000;
-pub const POINT_SEQ_BASE_FREQ: usize = 40000;
+pub const GAIN_SEQ_BUFFER_SIZE_MAX: usize = 1024;
+pub const SEQ_BASE_FREQ: usize = 40000;
 
 pub type DataArray = [u16; NUM_TRANS_IN_UNIT];
 
@@ -57,11 +57,12 @@ pub enum CommandType {
     ReadCpuVerMsb = 0x03,
     ReadFpgaVerLsb = 0x04,
     ReadFpgaVerMsb = 0x05,
-    SeqMode = 0x06,
+    PointSeqMode = 0x06,
     Clear = 0x09,
     SetDelay = 0x0A,
     Pause = 0x0B,
     Resume = 0x0C,
+    GainSeqMode = 0x0D,
     EmulatorSetGeometry = 0xFF,
 }
 

@@ -4,7 +4,7 @@
  * Created Date: 26/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 27/05/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -77,7 +77,12 @@ fn main() {
         .allowlist_function("ec_writestate")
         .allowlist_function("ec_statecheck")
         .allowlist_function("ec_close")
+        .allowlist_function("ec_readstate")
+        .allowlist_function("ec_reconfig_slave")
+        .allowlist_function("ec_recover_slave")
         .allowlist_var("ec_slave")
+        .allowlist_var("ec_group")
+        .allowlist_var("ec_slavecount")
         .allowlist_var("EC_TIMEOUTSTATE")
         .allowlist_var("EC_TIMEOUTRET")
         .allowlist_type("ec_state")
@@ -129,7 +134,12 @@ fn main() {
         .allowlist_function("ec_writestate")
         .allowlist_function("ec_statecheck")
         .allowlist_function("ec_close")
+        .allowlist_function("ec_readstate")
+        .allowlist_function("ec_reconfig_slave")
+        .allowlist_function("ec_recover_slave")
         .allowlist_var("ec_slave")
+        .allowlist_var("ec_group")
+        .allowlist_var("ec_slavecount")
         .allowlist_var("EC_TIMEOUTSTATE")
         .allowlist_var("EC_TIMEOUTRET")
         .allowlist_type("ec_state")
@@ -181,7 +191,12 @@ fn main() {
         .allowlist_function("ec_writestate")
         .allowlist_function("ec_statecheck")
         .allowlist_function("ec_close")
+        .allowlist_function("ec_readstate")
+        .allowlist_function("ec_reconfig_slave")
+        .allowlist_function("ec_recover_slave")
         .allowlist_var("ec_slave")
+        .allowlist_var("ec_group")
+        .allowlist_var("ec_slavecount")
         .allowlist_var("EC_TIMEOUTSTATE")
         .allowlist_var("EC_TIMEOUTRET")
         .allowlist_type("ec_state")

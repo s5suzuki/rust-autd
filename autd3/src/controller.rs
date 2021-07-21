@@ -4,7 +4,7 @@
  * Created Date: 25/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 06/07/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -26,7 +26,7 @@ use autd3_core::{
     link::Link,
     logic::Logic,
     modulation::Modulation,
-    sequence::PointSequence,
+    sequence::{GainSequence, PointSequence, Sequence},
 };
 use std::thread;
 
@@ -299,7 +299,7 @@ impl<L: Link> Controller<L> {
         loop {
             let mut msg_id = 0;
             Logic::pack_header(
-                CommandType::SeqMode,
+                CommandType::PointSeqMode,
                 self.ctrl_flag(),
                 &mut self.tx_buf,
                 &mut msg_id,
@@ -308,6 +308,32 @@ impl<L: Link> Controller<L> {
             Logic::pack_seq(s, &self.geometry, &mut self.tx_buf, &mut size);
             self.link.send(&self.tx_buf[0..size])?;
 
+            let r = self.wait_msg_processed(msg_id, 50).await?;
+            if !r || s.finished() {
+                return Ok(r);
+            }
+        }
+    }
+
+    /// Send sequence to the devices
+    ///
+    /// # Arguments
+    ///
+    /// * `s` - Sequence
+    ///
+    pub async fn send_gain_seq(&mut self, s: &mut GainSequence) -> Result<bool> {
+        self.seq_mode = true;
+        loop {
+            let mut msg_id = 0;
+            Logic::pack_header(
+                CommandType::GainSeqMode,
+                self.ctrl_flag(),
+                &mut self.tx_buf,
+                &mut msg_id,
+            );
+            let mut size = 0;
+            Logic::pack_gain_seq(s, &self.geometry, &mut self.tx_buf, &mut size);
+            self.link.send(&self.tx_buf[0..size])?;
             let r = self.wait_msg_processed(msg_id, 50).await?;
             if !r || s.finished() {
                 return Ok(r);

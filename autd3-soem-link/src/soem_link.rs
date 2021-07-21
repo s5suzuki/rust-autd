@@ -4,7 +4,7 @@
  * Created Date: 02/09/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 29/05/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -34,11 +34,13 @@ use libc::{c_char, c_void};
 use crate::error::SoemError;
 use crate::native_methods::*;
 
-struct SoemCallback {
+struct SoemCallback<F: Fn(&str) + Send> {
     lock: AtomicBool,
+    expected_wkc: i32,
+    error_handle: Option<F>,
 }
 
-impl TimerCallback for SoemCallback {
+impl<F: Fn(&str) + Send> TimerCallback for SoemCallback<F> {
     fn rt_thread(&mut self) {
         unsafe {
             if let Ok(false) =
@@ -46,15 +48,91 @@ impl TimerCallback for SoemCallback {
                     .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             {
                 ec_send_processdata();
-                ec_receive_processdata(EC_TIMEOUTRET as i32);
+                if self.expected_wkc != ec_receive_processdata(EC_TIMEOUTRET as i32)
+                    && !self.error_handle()
+                {
+                    return;
+                }
+
                 self.lock.store(false, Ordering::Release);
             }
         }
     }
 }
 
-pub struct SoemLink {
-    timer_handle: Option<Box<Timer<SoemCallback>>>,
+impl<F: Fn(&str) + Send> SoemCallback<F> {
+    unsafe fn error_handle(&self) -> bool {
+        ec_group[0].docheckstate = 0;
+        ec_readstate();
+        let mut msg = String::new();
+        for (i, slave) in ec_slave
+            .iter_mut()
+            .enumerate()
+            .take(ec_slavecount as usize + 1)
+            .skip(1)
+        {
+            if slave.state != ec_state_EC_STATE_OPERATIONAL as _ {
+                ec_group[0].docheckstate = 1;
+                if slave.state == ec_state_EC_STATE_SAFE_OP as u16 + ec_state_EC_STATE_ERROR as u16
+                {
+                    msg.push_str(&format!(
+                        "ERROR : slave {} is in SAFE_OP + ERROR, attempting ack\n",
+                        i
+                    ));
+                    slave.state = ec_state_EC_STATE_SAFE_OP as u16 + ec_state_EC_STATE_ACK as u16;
+                    ec_writestate(i as _);
+                } else if slave.state == ec_state_EC_STATE_SAFE_OP as _ {
+                    msg.push_str(&format!(
+                        "ERROR : slave {} is in SAFE_OP, change to OPERATIONAL\n",
+                        i
+                    ));
+                    slave.state = ec_state_EC_STATE_OPERATIONAL as _;
+                    ec_writestate(i as _);
+                } else if slave.state > ec_state_EC_STATE_NONE as _ {
+                    if ec_reconfig_slave(i as _, 500) != 0 {
+                        slave.islost = 0;
+                        msg.push_str(&format!("MESSAGE : slave {} reconfigured\n", i));
+                    }
+                } else if slave.islost == 0 {
+                    ec_statecheck(
+                        i as _,
+                        ec_state_EC_STATE_OPERATIONAL as _,
+                        EC_TIMEOUTRET as _,
+                    );
+                    if slave.state == ec_state_EC_STATE_NONE as _ {
+                        slave.islost = 1;
+                        msg.push_str(&format!("ERROR : slave {} lost\n", i));
+                    }
+                }
+            }
+            if slave.islost != 0 {
+                if slave.state == ec_state_EC_STATE_NONE as _ {
+                    if ec_recover_slave(i as _, 500) != 0 {
+                        slave.islost = 0;
+                        msg.push_str(&format!("MESSAGE : slave {} recovered\n", i));
+                    }
+                } else {
+                    slave.islost = 0;
+                    msg.push_str(&format!("MESSAGE : slave {} found\n", i));
+                }
+            }
+        }
+
+        if ec_group[0].docheckstate == 0 {
+            return true;
+        }
+
+        if let Some(f) = &self.error_handle {
+            f(&msg);
+        }
+
+        false
+    }
+}
+
+pub struct SoemLink<F: Fn(&str) + Send> {
+    timer_handle: Option<Box<Timer<SoemCallback<F>>>>,
+    error_handle: Option<F>,
     is_open: bool,
     ifname: std::ffi::CString,
     dev_num: u16,
@@ -63,13 +141,14 @@ pub struct SoemLink {
     io_map: Vec<u8>,
 }
 
-impl SoemLink {
-    pub fn new(ifname: &str, dev_num: u16, cycle_ticks: u32) -> Self {
+impl<F: Fn(&str) + Send> SoemLink<F> {
+    pub fn new(ifname: &str, dev_num: u16, cycle_ticks: u32, error_handle: F) -> Self {
         Self {
             dev_num,
             ec_sm2_cyctime_ns: EC_SM3_CYCLE_TIME_NANO_SEC * cycle_ticks,
             ec_sync0_cyctime_ns: EC_SYNC0_CYCLE_TIME_NANO_SEC * cycle_ticks,
             timer_handle: None,
+            error_handle: Some(error_handle),
             is_open: false,
             ifname: std::ffi::CString::new(ifname.to_string()).unwrap(),
             io_map: vec![],
@@ -120,7 +199,7 @@ impl SoemLink {
     }
 }
 
-impl Link for SoemLink {
+impl<F: Fn(&str) + Send> Link for SoemLink<F> {
     fn open(&mut self) -> Result<()> {
         let size = (EC_OUTPUT_FRAME_SIZE + EC_INPUT_FRAME_SIZE) * self.dev_num as usize;
 
@@ -166,9 +245,12 @@ impl Link for SoemLink {
         }
 
         self.is_open = true;
+        let expected_wkc = unsafe { (ec_group[0].outputsWKC * 2 + ec_group[0].inputsWKC) as i32 };
         self.timer_handle = Some(Timer::start(
             SoemCallback {
                 lock: AtomicBool::new(false),
+                expected_wkc,
+                error_handle: self.error_handle.take(),
             },
             self.ec_sm2_cyctime_ns,
         )?);

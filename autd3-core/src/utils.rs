@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 28/05/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -17,6 +17,23 @@ use std::f64::consts::PI;
 pub fn adjust_amp(amp: f64) -> u8 {
     let d = amp.asin() / PI; // duty (0 ~ 0.5)
     (510.0 * d) as u8
+}
+
+#[cfg(feature = "phase_inverted")]
+pub fn to_phase(phase: f64) -> u8 {
+    (((phase * 256.0).round() as i32) & 0xFF) as u8
+}
+
+#[cfg(not(feature = "phase_inverted"))]
+pub fn to_phase(phase: f64) -> u8 {
+    let phase = (((phase * 256.0).round() as i32) & 0xFF) as u8;
+    0xFF - phase
+}
+
+pub fn pack_to_u16(high: u8, low: u8) -> u16 {
+    let low = (low as u16) & 0x00FF;
+    let high = ((high as u16) << 8) & 0xFF00;
+    high | low
 }
 
 #[allow(clippy::excessive_precision, clippy::unreadable_literal)]

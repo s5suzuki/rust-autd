@@ -4,12 +4,14 @@
  * Created Date: 03/06/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 19/06/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
  *
  */
+
+use std::f64::consts::PI;
 
 use crate::{macros::propagate, Complex};
 use anyhow::Result;
@@ -41,9 +43,7 @@ impl Greedy {
         assert!(foci.len() == amps.len());
         let mut phases = Vec::with_capacity(phase_div);
         for i in 0..phase_div {
-            phases.push(
-                Complex::new(0., 2.0 * std::f64::consts::PI * i as f64 / phase_div as f64).exp(),
-            );
+            phases.push(Complex::new(0., 2.0 * PI * i as f64 / phase_div as f64).exp());
         }
         Self {
             data: vec![],
@@ -59,7 +59,7 @@ impl Greedy {
     fn calc(&mut self, geometry: &Geometry) -> Result<()> {
         let m = self.foci.len();
 
-        let wave_num = 2.0 * std::f64::consts::PI / geometry.wavelength;
+        let wave_num = 2.0 * PI / geometry.wavelength;
         let attenuation = geometry.attenuation;
 
         let mut tmp = Vec::with_capacity(self.phases.len());
@@ -113,13 +113,10 @@ impl Greedy {
                     *c += tmp[min_idx][j];
                 }
 
-                const DUTY: u16 = 0xFF00;
-                let phase = (((1.0
-                    - (self.phases[min_idx].argument() + std::f64::consts::PI)
-                        / (2.0 * std::f64::consts::PI))
-                    * 256.0) as u16)
-                    & 0xFF;
-                self.data[dev][i] = DUTY | phase;
+                const DUTY: u8 = 0xFF;
+                let phase = (self.phases[min_idx].argument() + PI) / (2.0 * PI);
+                self.data[dev][i] =
+                    autd3_core::utils::pack_to_u16(DUTY, autd3_core::utils::to_phase(phase));
             }
         }
 

@@ -1,6 +1,6 @@
 [package]
 name = "autd3-holo-gain"
-version = "1.4.0"
+version = "1.6.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -16,10 +16,15 @@ exclude = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nalgebra = "0.26.2"
-autd3-core = {path="../autd3-core", version="1.1.0"}
-autd3-traits = {path="../autd3-traits", version="1.0.0"}
+nalgebra = "0.28.0"
+autd3-core = {path="../autd3-core", version="1.6.0"}
+autd3-traits = {path="../autd3-traits", version="1.6.0"}
 itertools = "0.10.0"
 rand = "0.8.3"
 thiserror = "1.0.25"
 anyhow = "1.0.40"
+
+[features]
+phase_inverted = ["autd3-core/phase_inverted"]
+default = ["phase_inverted"]
+all = ["phase_inverted"]

@@ -4,7 +4,7 @@
  * Created Date: 29/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 19/06/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -218,10 +218,10 @@ impl<B: Backend> Lm<B> {
         let mut dev_idx = 0;
         let mut trans_idx = 0;
         for j in 0..n {
-            let duty = 0xFF00;
-            let f_phase = x[j] % (2. * PI) / (2. * PI);
-            let phase = (((1. - f_phase) * 256.) as u16) & 0xFF;
-            self.data[dev_idx][trans_idx] = duty | phase;
+            let duty = 0xFF;
+            let phase = x[j] % (2. * PI) / (2. * PI);
+            let phase = autd3_core::utils::to_phase(phase);
+            self.data[dev_idx][trans_idx] = autd3_core::utils::pack_to_u16(duty, phase);
             trans_idx += 1;
             if trans_idx == NUM_TRANS_IN_UNIT {
                 dev_idx += 1;

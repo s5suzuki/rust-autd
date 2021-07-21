@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 06/07/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -22,7 +22,7 @@ use crate::{
         NUM_TRANS_IN_UNIT,
     },
     modulation::Modulation,
-    sequence::PointSequence,
+    sequence::{GainSequence, PointSequence, Sequence},
 };
 
 static MSG_ID: AtomicU8 = AtomicU8::new(0);
@@ -150,11 +150,11 @@ impl Logic {
                     / std::mem::size_of::<SeqFocus>(),
             );
 
-            if seq.sent() + send_size >= seq.control_points().len() {
+            if seq.sent() + send_size >= seq.size() {
                 (*header).ctrl_flag |= RxGlobalControlFlags::SEQ_END;
             }
 
-            let fixed_num_unit = 255.0 / geometry.wavelength;
+            let fixed_num_unit = 256.0 / geometry.wavelength;
             for device in 0..num_devices {
                 std::ptr::write(cursor, send_size as u16);
                 let mut focus_cursor = cursor.add(offset) as *mut SeqFocus;
@@ -169,6 +169,50 @@ impl Logic {
                 cursor = cursor.add(NUM_TRANS_IN_UNIT);
             }
             seq.send(send_size);
+        }
+    }
+
+    pub fn pack_gain_seq(
+        seq: &mut GainSequence,
+        geometry: &Geometry,
+        data: &mut [u8],
+        size: &mut usize,
+    ) {
+        let num_devices = geometry.num_devices();
+
+        *size = std::mem::size_of::<RxGlobalHeader>()
+            + std::mem::size_of::<u16>() * NUM_TRANS_IN_UNIT * num_devices;
+
+        let header = data.as_mut_ptr() as *mut RxGlobalHeader;
+        unsafe {
+            if seq.sent() == 0 {
+                let cursor =
+                    data.as_mut_ptr().add(std::mem::size_of::<RxGlobalHeader>()) as *mut u16;
+                (*header).ctrl_flag |= RxGlobalControlFlags::SEQ_BEGIN;
+                for i in 0..num_devices {
+                    cursor
+                        .add(i * NUM_TRANS_IN_UNIT + 1)
+                        .write(seq.sampling_freq_div());
+                }
+                seq.send(1);
+                return;
+            }
+
+            if seq.sent() >= seq.size() {
+                (*header).ctrl_flag |= RxGlobalControlFlags::SEQ_END;
+            }
+
+            let mut cursor =
+                data.as_mut_ptr().add(std::mem::size_of::<RxGlobalHeader>()) as *mut u16;
+            for device in 0..num_devices {
+                std::ptr::copy_nonoverlapping(
+                    seq.gains()[seq.sent() - 1][device].as_ptr(),
+                    cursor,
+                    NUM_TRANS_IN_UNIT,
+                );
+                cursor = cursor.add(NUM_TRANS_IN_UNIT);
+            }
+            seq.send(1);
         }
     }
 

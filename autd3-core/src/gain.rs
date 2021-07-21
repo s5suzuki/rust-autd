@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/05/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -18,5 +18,6 @@ use anyhow::Result;
 pub trait Gain {
     fn build(&mut self, geometry: &Geometry) -> Result<()>;
     fn data(&self) -> &[DataArray];
+    fn take(self) -> Vec<DataArray>;
     fn built(&self) -> bool;
 }

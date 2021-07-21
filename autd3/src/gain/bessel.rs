@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 19/06/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -69,7 +69,7 @@ impl Bessel {
         let v = Vector3::new(dir.y, -dir.x, 0.);
         let theta_w = v.norm().asin();
 
-        let duty = (self.duty as u16) << 8;
+        let duty = self.duty;
         let wavelength = geometry.wavelength;
         for dev in 0..geometry.num_devices() {
             for i in 0..NUM_TRANS_IN_UNIT {
@@ -81,8 +81,8 @@ impl Bessel {
                 let dist =
                     self.theta.sin() * (r.x * r.x + r.y * r.y).sqrt() - self.theta.cos() * r.z;
                 let phase = (dist % wavelength) / wavelength;
-                let phase = ((256.0 * (1.0 - phase)).round() as u16) & 0x00FF;
-                self.data[dev][i] = duty | phase;
+                let phase = autd3_core::utils::to_phase(phase);
+                self.data[dev][i] = autd3_core::utils::pack_to_u16(duty, phase);
             }
         }
         self.built = true;
