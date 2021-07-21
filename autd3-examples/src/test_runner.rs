@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 18/06/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -36,7 +36,8 @@ pub async fn run<L: Link>(autd: Controller<L>) -> Result<()> {
         println!("[1]: BesselBeam Test");
         println!("[2]: Multiple foci Test");
         println!("[3]: Spatio-Temporal Modulation Test");
-        println!("[4]: Sequence (hardware STM) Test");
+        println!("[4]: PointSequence (hardware STM) Test");
+        println!("[5]: GainSequence (hardware STM with arbitrary Gain) Test");
         println!("[Others]: Finish");
         print!("{}", "Choose number: ".green().bold());
         io::stdout().flush()?;
@@ -49,6 +50,7 @@ pub async fn run<L: Link>(autd: Controller<L>) -> Result<()> {
             Ok(2) => holo(autd).await?,
             Ok(3) => stm(autd).await?,
             Ok(4) => seq(autd).await?,
+            Ok(5) => seq_gain(autd).await?,
             _ => break,
         };
 

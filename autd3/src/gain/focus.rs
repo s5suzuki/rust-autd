@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 19/06/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -58,14 +58,14 @@ impl Focus {
     #[allow(clippy::unnecessary_wraps)]
     fn calc(&mut self, geometry: &Geometry) -> Result<()> {
         let wavelength = geometry.wavelength;
-        let duty = ((self.duty as u16) << 8) & 0xFF00;
+        let duty = self.duty;
         for dev in 0..geometry.num_devices() {
             for i in 0..NUM_TRANS_IN_UNIT {
                 let trp = geometry.position_by_local_idx(dev, i);
                 let dist = (trp - self.pos).norm();
-                let f_phase = (dist % wavelength) / wavelength;
-                let phase = ((256.0 * (1.0 - f_phase)).round() as u16) & 0x00FF;
-                self.data[dev][i] = duty | phase;
+                let phase = (dist % wavelength) / wavelength;
+                let phase = autd3_core::utils::to_phase(phase);
+                self.data[dev][i] = autd3_core::utils::pack_to_u16(duty, phase);
             }
         }
         self.built = true;

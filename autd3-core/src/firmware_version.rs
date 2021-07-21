@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 06/07/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -40,7 +40,7 @@ impl FirmwareInfo {
         match version_number {
             0 => "older than v0.4".to_string(),
             0x01..=0x06 => format!("v0.{}", version_number + 3),
-            0x0A..=0x0D => format!("v1.{}", version_number - 0x0A),
+            0x0A..=0x10 => format!("v1.{}", version_number - 0x0A),
             0xFFFF => "emulator".to_string(),
             _ => format!("unknown: {}", version_number),
         }

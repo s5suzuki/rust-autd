@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 06/07/2021
+ * Last Modified: 21/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -117,7 +117,8 @@ impl Link for EmulatorLink {
             CommandType::ReadCpuVerMsb => set(0xFF),
             CommandType::ReadFpgaVerLsb => set(0xFF),
             CommandType::ReadFpgaVerMsb => set(0xFF),
-            CommandType::SeqMode => (),
+            CommandType::PointSeqMode => (),
+            CommandType::GainSeqMode => (),
             CommandType::Clear => (),
             CommandType::SetDelay => (),
             CommandType::Pause => (),
