@@ -17,10 +17,10 @@ jobs:
         cd autd3-timer
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
-        cd autd3-core
+        cd autd3-traits
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
-        cd autd3-traits
+        cd autd3-core
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
         cd autd3
@@ -38,4 +38,3 @@ jobs:
         cd autd3-holo-gain
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
-     
