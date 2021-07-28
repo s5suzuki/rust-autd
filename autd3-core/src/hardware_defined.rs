@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 21/07/2021
+ * Last Modified: 28/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -22,15 +22,16 @@ pub fn is_missing_transducer(x: usize, y: usize) -> bool {
     y == 1 && (x == 1 || x == 2 || x == 16)
 }
 
-pub const FPGA_CLOCK: usize = 20400000;
+pub const FPGA_CLOCK: usize = 20480000;
 pub const ULTRASOUND_FREQUENCY: usize = 40000;
 
-pub const MOD_BUF_SIZE_MAX: usize = 65536;
+pub const MOD_BUF_SIZE_MAX: usize = 65535;
 pub const MOD_SAMPLING_FREQ_BASE: f64 = 40000.0;
+pub const MOD_SAMPLING_FREQ_DIV_MAX: usize = 65535;
 pub const MOD_FRAME_SIZE: usize = 124;
 
-pub const POINT_SEQ_BUFFER_SIZE_MAX: usize = 65536;
-pub const GAIN_SEQ_BUFFER_SIZE_MAX: usize = 1024;
+pub const POINT_SEQ_BUFFER_SIZE_MAX: usize = 65535;
+pub const GAIN_SEQ_BUFFER_SIZE_MAX: usize = 2048;
 pub const SEQ_BASE_FREQ: usize = 40000;
 
 pub type DataArray = [u16; NUM_TRANS_IN_UNIT];
@@ -91,4 +92,12 @@ impl SeqFocus {
             | ((z >> 26) & 0x0020) as u16
             | ((z >> 12) & 0x001F) as u16;
     }
+}
+
+#[repr(u16)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum GainMode {
+    DutyPhaseFull = 1,
+    PhaseFull = 2,
+    PhaseHalf = 4,
 }

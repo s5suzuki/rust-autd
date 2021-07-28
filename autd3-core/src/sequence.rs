@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 21/07/2021
+ * Last Modified: 28/07/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -16,7 +16,7 @@ use crate::{
     gain::Gain,
     geometry::{Geometry, Vector3},
     hardware_defined::{
-        DataArray, GAIN_SEQ_BUFFER_SIZE_MAX, POINT_SEQ_BUFFER_SIZE_MAX, SEQ_BASE_FREQ,
+        DataArray, GainMode, GAIN_SEQ_BUFFER_SIZE_MAX, POINT_SEQ_BUFFER_SIZE_MAX, SEQ_BASE_FREQ,
     },
 };
 use anyhow::Result;
@@ -96,14 +96,20 @@ pub struct GainSequence {
     gains: Vec<Vec<DataArray>>,
     sample_freq_div: u16,
     sent: usize,
+    gain_mode: GainMode,
 }
 
 impl GainSequence {
     pub fn new() -> Self {
+        Self::with_gain_mode(GainMode::DutyPhaseFull)
+    }
+
+    pub fn with_gain_mode(gain_mode: GainMode) -> Self {
         Self {
             gains: vec![],
             sample_freq_div: 1,
             sent: 0,
+            gain_mode,
         }
     }
 
@@ -126,6 +132,10 @@ impl GainSequence {
 
     pub fn remaining(&self) -> usize {
         self.size() + 1 - self.sent
+    }
+
+    pub fn gain_mode(&mut self) -> &mut GainMode {
+        &mut self.gain_mode
     }
 }
 
