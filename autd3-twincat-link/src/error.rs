@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 27/05/2021
+ * Last Modified: 07/09/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -16,11 +16,11 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum AdsError {
     #[error("Failed to open port")]
-    FailedOpenPort,
+    OpenPort,
     #[error("Failed to get local address: {0}")]
-    FailedGetLocalAddress(i32),
+    GetLocalAddress(i32),
     #[error("Failed to send data: {0}")]
-    FailedSendData(i32),
+    SendData(i32),
     #[error("Failed to read data: {0}")]
-    FailedReadData(i32),
+    ReadData(i32),
 }

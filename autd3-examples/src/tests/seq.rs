@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 28/05/2021
+ * Last Modified: 07/09/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -33,7 +33,7 @@ pub async fn seq<L: Link>(mut autd: Controller<L>) -> Result<Controller<L>> {
         let radius = 30.0;
         let theta = 2.0 * std::f64::consts::PI * i as f64 / point_num as f64;
         let p = radius * Vector3::new(theta.cos(), theta.sin(), 0.0);
-        seq.add_point(center + p)?;
+        seq.add_point(center + p, 0xFF)?;
     }
 
     let f = seq.set_freq(1.0);

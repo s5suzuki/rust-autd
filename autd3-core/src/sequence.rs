@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 28/07/2021
+ * Last Modified: 07/09/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -34,7 +34,7 @@ pub trait Sequence {
 
 #[derive(Sequence)]
 pub struct PointSequence {
-    control_points: Vec<Vector3>,
+    control_points: Vec<(Vector3, u8)>,
     sample_freq_div: u16,
     sent: usize,
 }
@@ -48,7 +48,7 @@ impl PointSequence {
         }
     }
 
-    pub fn with_control_points(control_points: Vec<Vector3>) -> Self {
+    pub fn with_control_points(control_points: Vec<(Vector3, u8)>) -> Self {
         Self {
             control_points,
             sample_freq_div: 1,
@@ -56,15 +56,15 @@ impl PointSequence {
         }
     }
 
-    pub fn add_point(&mut self, point: Vector3) -> Result<()> {
+    pub fn add_point(&mut self, point: Vector3, duty: u8) -> Result<()> {
         if self.control_points.len() + 1 > POINT_SEQ_BUFFER_SIZE_MAX {
             return Err(AutdError::PointSequenceOutOfBuffer(POINT_SEQ_BUFFER_SIZE_MAX).into());
         }
-        self.control_points.push(point);
+        self.control_points.push((point, duty));
         Ok(())
     }
 
-    pub fn add_points(&mut self, points: &[Vector3]) -> Result<()> {
+    pub fn add_points(&mut self, points: &[(Vector3, u8)]) -> Result<()> {
         if self.control_points.len() + points.len() > POINT_SEQ_BUFFER_SIZE_MAX {
             return Err(AutdError::PointSequenceOutOfBuffer(POINT_SEQ_BUFFER_SIZE_MAX).into());
         }
@@ -76,7 +76,7 @@ impl PointSequence {
         self.control_points.len()
     }
 
-    pub fn control_points(&self) -> &[Vector3] {
+    pub fn control_points(&self) -> &[(Vector3, u8)] {
         &self.control_points
     }
 

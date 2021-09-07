@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 27/05/2021
+ * Last Modified: 07/09/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -54,14 +54,14 @@ impl Link for TwinCatLink {
         unsafe {
             let port = (TC_ADS.tc_ads_port_open)();
             if port == 0 {
-                return Err(AdsError::FailedOpenPort.into());
+                return Err(AdsError::OpenPort.into());
             }
             self.port = port;
 
             let mut ams_addr: AmsAddr = std::mem::zeroed();
             let n_err = (TC_ADS.tc_ads_get_local_address)(port, &mut ams_addr as *mut _);
             if n_err != 0 {
-                return Err(AdsError::FailedGetLocalAddress(n_err).into());
+                return Err(AdsError::GetLocalAddress(n_err).into());
             }
             self.send_addr.net_id = ams_addr.net_id;
         }
@@ -89,7 +89,7 @@ impl Link for TwinCatLink {
             );
 
             if n_err > 0 {
-                Err(AdsError::FailedSendData(n_err).into())
+                Err(AdsError::SendData(n_err).into())
             } else {
                 Ok(true)
             }
@@ -110,7 +110,7 @@ impl Link for TwinCatLink {
             );
 
             if n_err > 0 {
-                Err(AdsError::FailedReadData(n_err).into())
+                Err(AdsError::ReadData(n_err).into())
             } else {
                 Ok(true)
             }

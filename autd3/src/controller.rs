@@ -4,7 +4,7 @@
  * Created Date: 25/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 21/07/2021
+ * Last Modified: 07/09/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -265,6 +265,30 @@ impl<L: Link> Controller<L> {
 
         self.link.send(&self.tx_buf[0..size])?;
         self.wait_msg_processed(msg_id, 50).await
+    }
+
+    /// Send gain to the devices without waiting
+    ///
+    /// # Arguments
+    ///
+    /// * `g` - Gain
+    ///
+    pub fn send_gain_without_wait<G: Gain>(&mut self, g: &mut G) -> Result<bool> {
+        self.seq_mode = false;
+        g.build(&self.geometry)?;
+
+        let mut size = 0;
+        Logic::pack_body(g, &mut self.tx_buf, &mut size);
+
+        let mut msg_id = 0;
+        Logic::pack_header(
+            CommandType::Op,
+            self.ctrl_flag(),
+            &mut self.tx_buf,
+            &mut msg_id,
+        );
+
+        self.link.send(&self.tx_buf[0..size])
     }
 
     /// Send modulation to the devices

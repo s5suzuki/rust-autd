@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 28/07/2021
+ * Last Modified: 07/09/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -159,11 +159,12 @@ impl Logic {
                 std::ptr::write(cursor, send_size as u16);
                 let mut focus_cursor = cursor.add(offset) as *mut SeqFocus;
                 for i in 0..send_size {
-                    let v64 = geometry.local_position(device, seq.control_points()[seq.sent() + i]);
+                    let cp = seq.control_points()[seq.sent() + i];
+                    let v64 = geometry.local_position(device, cp.0);
                     let x = v64[0] * fixed_num_unit;
                     let y = v64[1] * fixed_num_unit;
                     let z = v64[2] * fixed_num_unit;
-                    (*focus_cursor).set(x as i32, y as i32, z as i32, 0xFF);
+                    (*focus_cursor).set(x as i32, y as i32, z as i32, cp.1);
                     focus_cursor = focus_cursor.add(1);
                 }
                 cursor = cursor.add(NUM_TRANS_IN_UNIT);

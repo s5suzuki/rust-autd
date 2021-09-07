@@ -4,7 +4,7 @@
  * Created Date: 26/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 03/06/2021
+ * Last Modified: 07/09/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -57,7 +57,7 @@ impl<L: Link> TimerCallback for StmTimerCallback<L> {
                 .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         {
             let data = &self.buffers[self.idx];
-            self.link.send(&data).unwrap();
+            self.link.send(data).unwrap();
             self.idx = (self.idx + 1) % self.buffers.len();
             self.lock.store(false, Ordering::Release);
         }
