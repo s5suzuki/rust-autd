@@ -4,7 +4,7 @@
  * Created Date: 02/09/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 02/10/2021
+ * Last Modified: 03/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -281,20 +281,26 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
                 {
                     let (lock, cond) = &*send_lock;
                     let mut mtx = lock.lock().unwrap();
-                    loop {
-                        mtx = cond.wait(mtx).unwrap();
-                        if !is_open.load(Ordering::Acquire)
-                            || send_buf_size.load(Ordering::Acquire) != 0
-                        {
-                            break;
+                    if send_buf_size.load(Ordering::Acquire) == 0 {
+                        loop {
+                            mtx = cond.wait(mtx).unwrap();
+                            if !is_open.load(Ordering::Acquire)
+                                || send_buf_size.load(Ordering::Acquire) != 0
+                            {
+                                break;
+                            }
                         }
                     }
                     if !is_open.load(Ordering::Acquire) {
                         return;
                     }
-                    let idx = (send_buf_cursor.load(Ordering::Acquire)
-                        + send_buf_size.load(Ordering::Acquire))
-                        % SEND_BUF_SIZE;
+                    let cursor = send_buf_cursor.load(Ordering::Acquire);
+                    let size = send_buf_size.load(Ordering::Acquire);
+                    let idx = if cursor >= size {
+                        cursor - size
+                    } else {
+                        cursor + SEND_BUF_SIZE - size
+                    };
                     unsafe {
                         let src = send_buf.lock().unwrap()[idx].as_ptr();
                         std::ptr::copy_nonoverlapping(
@@ -306,7 +312,7 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
                     send_buf_size.fetch_sub(1, Ordering::AcqRel);
                 }
                 sent.store(false, Ordering::Release);
-                while is_open.load(Ordering::Acquire) || !sent.load(Ordering::Acquire) {
+                while is_open.load(Ordering::Acquire) && !sent.load(Ordering::Acquire) {
                     std::thread::sleep(std::time::Duration::from_nanos(ec_sm2_cycle_time_ns as _));
                 }
             }
@@ -370,7 +376,8 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
         let (lock, cond) = &*self.send_lock;
         {
             let _mtx = lock.lock();
-            let ptr = self.io_map.lock().unwrap().as_mut_ptr();
+            let ptr = self.send_buf.lock().unwrap()[self.send_buf_cursor.load(Ordering::Acquire)]
+                .as_mut_ptr();
             unsafe {
                 if data.len() > HEADER_SIZE {
                     Self::write_header_body(
@@ -389,8 +396,8 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
             let _ = self.send_buf_cursor.compare_exchange(
                 SEND_BUF_SIZE,
                 0,
-                Ordering::Release,
-                Ordering::SeqCst,
+                Ordering::Acquire,
+                Ordering::Relaxed,
             );
         }
         cond.notify_one();

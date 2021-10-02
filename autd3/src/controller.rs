@@ -4,7 +4,7 @@
  * Created Date: 25/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 02/10/2021
+ * Last Modified: 03/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -31,7 +31,6 @@ use autd3_core::{
     modulation::Modulation,
     sequence::{GainSequence, PointSequence, Sequence},
 };
-use std::thread;
 
 pub(crate) struct ControllerProps {
     pub(crate) geometry: Geometry,
@@ -42,6 +41,7 @@ pub(crate) struct ControllerProps {
     pub(crate) force_fan: bool,
     pub(crate) op_mode: bool,
     pub(crate) seq_mode: bool,
+    pub(crate) check_ack: bool,
 }
 
 /// Controller for AUTD3
@@ -78,7 +78,7 @@ impl<L: Link> Controller<L> {
             force_fan: props.force_fan,
             output_balance: props.output_balance,
             output_enable: props.output_enable,
-            check_ack: false,
+            check_ack: props.check_ack,
             seq_mode: props.seq_mode,
             op_mode: props.op_mode,
             tx_buf: vec![0x00; num_devices * EC_OUTPUT_FRAME_SIZE],
@@ -109,6 +109,7 @@ impl<L: Link> Controller<L> {
                 seq_mode: SEQ_MODE_POINT,
                 output_balance: false,
                 output_enable: false,
+                check_ack: false,
             },
         ))
     }
@@ -442,6 +443,7 @@ impl<L: Link> Controller<L> {
                 op_mode: self.op_mode,
                 output_balance: self.output_balance,
                 output_enable: self.output_enable,
+                check_ack: self.check_ack,
             },
         }
     }
@@ -526,7 +528,7 @@ impl<L: Link> Controller<L> {
             if Logic::is_msg_processed(num_devices, msg_id, &self.rx_buf) {
                 return Ok(true);
             }
-            thread::sleep(std::time::Duration::from_millis(wait));
+            tokio::time::sleep(std::time::Duration::from_millis(wait)).await;
         }
         Ok(false)
     }

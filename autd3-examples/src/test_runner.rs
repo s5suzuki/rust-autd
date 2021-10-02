@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 21/07/2021
+ * Last Modified: 03/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -22,14 +22,14 @@ use std::io::{self, Write};
 pub async fn run<L: Link>(autd: Controller<L>) -> Result<()> {
     let mut autd = autd;
 
-    autd.clear().await?;
-
     println!("***** Firmware information *****");
     let firm_list = autd.firmware_infos().await?;
     for firm_info in firm_list {
         println!("{}", firm_info);
     }
     println!("********************************");
+
+    autd.clear().await?;
 
     loop {
         println!("[0]: Single Focal Point Test");
