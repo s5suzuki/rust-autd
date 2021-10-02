@@ -130,13 +130,13 @@ impl<B: Backend> Lm<B> {
         let mut tth = MatrixXc::zeros(n_param, n_param);
         Self::calc_t_th(&x, &mut tth);
 
-        let mut bhb_tth = unsafe { MatrixXc::new_uninitialized(n_param, n_param).assume_init() };
+        let mut bhb_tth = MatrixXc::zeros(n_param, n_param);
         B::hadamard_product(&bhb, &tth, &mut bhb_tth);
 
-        let mut a = unsafe { MatrixX::new_uninitialized(n_param, n_param).assume_init() };
+        let mut a = MatrixX::zeros(n_param, n_param);
         B::real(&bhb_tth, &mut a);
 
-        let mut g = unsafe { VectorX::new_uninitialized(n_param).assume_init() };
+        let mut g = VectorX::zeros(n_param);
         B::imag(&bhb_tth.column_sum(), &mut g);
 
         let a_max = a.diagonal().max();
@@ -157,9 +157,9 @@ impl<B: Backend> Lm<B> {
         let mut fx = B::dot_c(&t, &tmp_vec_c).real();
 
         let identity = MatrixX::identity(n_param, n_param);
-        let mut tmp_vec = unsafe { VectorX::new_uninitialized(n_param).assume_init() };
-        let mut x_new = unsafe { VectorX::new_uninitialized(n_param).assume_init() };
-        let mut h_lm = unsafe { VectorX::new_uninitialized(n_param).assume_init() };
+        let mut tmp_vec = VectorX::zeros(n_param);
+        let mut x_new = VectorX::zeros(n_param);
+        let mut h_lm = VectorX::zeros(n_param);
         for _ in 0..self.k_max {
             if B::max_coefficient(&g).abs() <= self.eps_1 {
                 break;

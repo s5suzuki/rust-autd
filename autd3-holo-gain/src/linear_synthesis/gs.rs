@@ -4,7 +4,7 @@
  * Created Date: 29/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/05/2021
+ * Last Modified: 02/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -66,7 +66,7 @@ impl<B: Backend> Gs<B> {
         let mut q = q0.clone();
 
         let mut gamma = VectorXc::zeros(m);
-        let mut p = unsafe { VectorXc::new_uninitialized(m).assume_init() };
+        let mut p = VectorXc::zeros(m);
         let mut xi = VectorXc::zeros(n);
         for _ in 0..self.repeat {
             B::matrix_mul_vec(
