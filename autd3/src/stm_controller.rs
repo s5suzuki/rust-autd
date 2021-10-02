@@ -4,7 +4,7 @@
  * Created Date: 26/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/09/2021
+ * Last Modified: 02/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -16,7 +16,7 @@ use anyhow::Result;
 use autd3_core::{
     ec_config::EC_OUTPUT_FRAME_SIZE,
     gain::Gain,
-    hardware_defined::{CommandType, RxGlobalControlFlags},
+    hardware_defined::{CPUControlFlags, CommandType, FPGAControlFlags},
     link::Link,
     logic::Logic,
 };
@@ -98,6 +98,7 @@ impl<L: Link> StmController<L> {
         Logic::pack_header(
             CommandType::Op,
             self.ctrl_flag(),
+            CPUControlFlags::NONE,
             &mut build_buf,
             &mut _msg_id,
         );
@@ -133,19 +134,16 @@ impl<L: Link> StmController<L> {
         self.callback.clear();
     }
 
-    fn ctrl_flag(&self) -> RxGlobalControlFlags {
-        let mut header = RxGlobalControlFlags::NONE;
+    fn ctrl_flag(&self) -> FPGAControlFlags {
+        let mut header = FPGAControlFlags::OUTPUT_ENABLE;
+        if self.props.output_balance {
+            header |= FPGAControlFlags::OUTPUT_BALANCE;
+        }
         if self.props.silent_mode {
-            header |= RxGlobalControlFlags::SILENT;
-        }
-        if self.props.seq_mode {
-            header |= RxGlobalControlFlags::SEQ_MODE;
-        }
-        if self.props.reads_fpga_info {
-            header |= RxGlobalControlFlags::READ_FPGA_INFO;
+            header |= FPGAControlFlags::SILENT;
         }
         if self.props.force_fan {
-            header |= RxGlobalControlFlags::FORCE_FAN;
+            header |= FPGAControlFlags::FORCE_FAN;
         }
         header
     }

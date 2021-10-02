@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 21/07/2021
+ * Last Modified: 02/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -18,7 +18,7 @@ use anyhow::Result;
 use autd3_core::{
     geometry::Geometry,
     hardware_defined::CommandType,
-    hardware_defined::{RxGlobalControlFlags, RxGlobalHeader, NUM_TRANS_IN_UNIT},
+    hardware_defined::{FPGAControlFlags, GlobalHeader, NUM_TRANS_IN_UNIT},
     link::Link,
 };
 
@@ -33,17 +33,17 @@ pub struct EmulatorLink {
 impl EmulatorLink {
     pub fn new(port: u16, geometry: &Geometry) -> Self {
         let vec_size = 9 * size_of::<f32>();
-        let size = size_of::<RxGlobalHeader>() + geometry.num_devices() * vec_size;
+        let size = size_of::<GlobalHeader>() + geometry.num_devices() * vec_size;
         let mut geometry_buf = vec![0; size];
 
         unsafe {
-            let uh = geometry_buf.as_mut_ptr() as *mut RxGlobalHeader;
+            let uh = geometry_buf.as_mut_ptr() as *mut GlobalHeader;
             (*uh).msg_id = 0x00;
-            (*uh).ctrl_flag = RxGlobalControlFlags::NONE;
+            (*uh).ctrl_flag = FPGAControlFlags::NONE;
             (*uh).command = CommandType::EmulatorSetGeometry;
             (*uh).mod_size = 0x00;
 
-            let mut cursor = geometry_buf.as_mut_ptr().add(size_of::<RxGlobalHeader>()) as *mut f32;
+            let mut cursor = geometry_buf.as_mut_ptr().add(size_of::<GlobalHeader>()) as *mut f32;
             for i in 0..geometry.num_devices() {
                 let trans_id = i * NUM_TRANS_IN_UNIT;
                 let origin = geometry.position_by_global_idx(trans_id);
@@ -92,7 +92,7 @@ impl Link for EmulatorLink {
         if let Some(socket) = &self.socket {
             socket.try_clone()?.send(data)?;
             unsafe {
-                let uh = data.as_ptr() as *mut RxGlobalHeader;
+                let uh = data.as_ptr() as *mut GlobalHeader;
                 self.last_msg_id = (*uh).msg_id;
                 self.last_cmd = (*uh).command;
             }
@@ -121,8 +121,6 @@ impl Link for EmulatorLink {
             CommandType::GainSeqMode => (),
             CommandType::Clear => (),
             CommandType::SetDelay => (),
-            CommandType::Pause => (),
-            CommandType::Resume => (),
             CommandType::EmulatorSetGeometry => (),
         }
 

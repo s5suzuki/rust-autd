@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 21/07/2021
+ * Last Modified: 02/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -21,12 +21,12 @@ pub fn adjust_amp(amp: f64) -> u8 {
 
 #[cfg(feature = "phase_inverted")]
 pub fn to_phase(phase: f64) -> u8 {
-    (((phase * 256.0).round() as i32) & 0xFF) as u8
+    ((((phase / (2.0 * PI) + 0.5) * 256.0).round() as i32) & 0xFF) as u8
 }
 
 #[cfg(not(feature = "phase_inverted"))]
 pub fn to_phase(phase: f64) -> u8 {
-    let phase = (((phase * 256.0).round() as i32) & 0xFF) as u8;
+    let phase = ((((phase / (2.0 * PI) + 0.5) * 256.0).round() as i32) & 0xFF) as u8;
     0xFF - phase
 }
 

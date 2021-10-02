@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 28/07/2021
+ * Last Modified: 02/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -15,8 +15,8 @@ pub const NUM_TRANS_IN_UNIT: usize = 249;
 pub const NUM_TRANS_X: usize = 18;
 pub const NUM_TRANS_Y: usize = 14;
 pub const TRANS_SPACING_MM: f64 = 10.16;
-pub const AUTD_WIDTH: f64 = 192.0;
-pub const AUTD_HEIGHT: f64 = 151.4;
+pub const DEVICE_WIDTH: f64 = 192.0;
+pub const DEVICE_HEIGHT: f64 = 151.4;
 
 pub fn is_missing_transducer(x: usize, y: usize) -> bool {
     y == 1 && (x == 1 || x == 2 || x == 16)
@@ -25,30 +25,33 @@ pub fn is_missing_transducer(x: usize, y: usize) -> bool {
 pub const FPGA_CLOCK: usize = 20480000;
 pub const ULTRASOUND_FREQUENCY: usize = 40000;
 
-pub const MOD_BUF_SIZE_MAX: usize = 65535;
+pub const MOD_BUF_SIZE_MAX: usize = 65536;
 pub const MOD_SAMPLING_FREQ_BASE: f64 = 40000.0;
 pub const MOD_SAMPLING_FREQ_DIV_MAX: usize = 65535;
-pub const MOD_FRAME_SIZE: usize = 124;
+pub const MOD_FRAME_SIZE: usize = 123;
 
-pub const POINT_SEQ_BUFFER_SIZE_MAX: usize = 65535;
+pub const POINT_SEQ_BUFFER_SIZE_MAX: usize = 65536;
 pub const GAIN_SEQ_BUFFER_SIZE_MAX: usize = 2048;
 pub const SEQ_BASE_FREQ: usize = 40000;
 
 pub type DataArray = [u16; NUM_TRANS_IN_UNIT];
 
 bitflags! {
-    pub struct RxGlobalControlFlags : u8 {
+    pub struct FPGAControlFlags : u8 {
         const NONE = 0;
-        const MOD_BEGIN = 1;
-        const MOD_END = 1 << 1;
-        const READ_FPGA_INFO = 1 << 2;
+        const OUTPUT_ENABLE = 1 << 0;
+        const OUTPUT_BALANCE = 1 << 1;
         const SILENT = 1 << 3;
         const FORCE_FAN = 1 << 4;
-        const SEQ_MODE = 1 << 5;
-        const SEQ_BEGIN = 1 << 6;
-        const SEQ_END = 1 << 7;
+        const OP_MODE = 1 << 5;
+        const SEQ_MODE = 1 << 6;
     }
 }
+
+pub const OP_MODE_NORMAL: bool = false;
+pub const OP_MODE_SEQ: bool = true;
+pub const SEQ_MODE_POINT: bool = false;
+pub const SEQ_MODE_GAIN: bool = true;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -61,17 +64,27 @@ pub enum CommandType {
     PointSeqMode = 0x06,
     Clear = 0x09,
     SetDelay = 0x0A,
-    Pause = 0x0B,
-    Resume = 0x0C,
     GainSeqMode = 0x0D,
     EmulatorSetGeometry = 0xFF,
 }
 
+bitflags! {
+    pub struct CPUControlFlags : u8 {
+        const NONE = 0;
+        const MOD_BEGIN = 1 << 0;
+        const MOD_END = 1 << 1;
+        const SEQ_BEGIN = 1 << 2;
+        const SEQ_END = 1 << 3;
+        const READS_FPGA_INFO = 1 << 4;
+    }
+}
+
 #[repr(C)]
-pub struct RxGlobalHeader {
+pub struct GlobalHeader {
     pub msg_id: u8,
-    pub ctrl_flag: RxGlobalControlFlags,
+    pub ctrl_flag: FPGAControlFlags,
     pub command: CommandType,
+    pub command_flag: CPUControlFlags,
     pub mod_size: u8,
     pub mod_data: [u8; MOD_FRAME_SIZE],
 }

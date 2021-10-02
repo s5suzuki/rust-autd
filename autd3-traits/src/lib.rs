@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 21/07/2021
+ * Last Modified: 02/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -68,10 +68,17 @@ fn impl_gain_macro(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         impl #impl_generics Gain for #name #ty_generics #where_clause {
             fn build(&mut self, geometry: &Geometry) -> Result<()>{
-                if self.built() {return Ok(())}
+                if self.built {return Ok(())}
                 let buf: DataArray = unsafe { std::mem::zeroed() };
                 self.data = vec![buf; geometry.num_devices()];
-                self.calc(geometry)
+                self.calc(geometry)?;
+                self.built = true;
+                Ok(())
+            }
+
+            fn rebuild(&mut self, geometry: &Geometry) -> Result<()>{
+                self.built = false;
+                self.build(geometry)
             }
 
             fn data(&self) -> &[DataArray]{
