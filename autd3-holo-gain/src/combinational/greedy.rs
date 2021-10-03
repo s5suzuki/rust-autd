@@ -4,7 +4,7 @@
  * Created Date: 03/06/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 21/07/2021
+ * Last Modified: 02/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -114,7 +114,7 @@ impl Greedy {
                 }
 
                 const DUTY: u8 = 0xFF;
-                let phase = (self.phases[min_idx].argument() + PI) / (2.0 * PI);
+                let phase = self.phases[min_idx].argument();
                 self.data[dev][i] =
                     autd3_core::utils::pack_to_u16(DUTY, autd3_core::utils::to_phase(phase));
             }

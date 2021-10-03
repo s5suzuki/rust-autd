@@ -4,7 +4,7 @@
  * Created Date: 25/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/09/2021
+ * Last Modified: 03/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -22,20 +22,26 @@ use autd3_core::{
     firmware_version::FirmwareInfo,
     gain::Gain,
     geometry::Geometry,
-    hardware_defined::{CommandType, RxGlobalControlFlags, RxGlobalHeader, NUM_TRANS_IN_UNIT},
+    hardware_defined::{
+        CPUControlFlags, CommandType, FPGAControlFlags, GlobalHeader, NUM_TRANS_IN_UNIT,
+        OP_MODE_NORMAL, OP_MODE_SEQ, SEQ_MODE_GAIN, SEQ_MODE_POINT,
+    },
     link::Link,
     logic::Logic,
     modulation::Modulation,
     sequence::{GainSequence, PointSequence, Sequence},
 };
-use std::thread;
 
 pub(crate) struct ControllerProps {
     pub(crate) geometry: Geometry,
+    pub(crate) output_enable: bool,
+    pub(crate) output_balance: bool,
     pub(crate) silent_mode: bool,
     pub(crate) reads_fpga_info: bool,
     pub(crate) force_fan: bool,
+    pub(crate) op_mode: bool,
     pub(crate) seq_mode: bool,
+    pub(crate) check_ack: bool,
 }
 
 /// Controller for AUTD3
@@ -48,6 +54,12 @@ pub struct Controller<L: Link> {
     pub reads_fpga_info: bool,
     /// If true, the fan will be forced to start. Default is false. **The flags in the actual devices will be update after [update_ctrl_flags](#method.update_ctrl_flags) or [send](#method.send) functions is called.**
     pub force_fan: bool,
+    ///  If true, the applied voltage to transducers is dropped to GND while transducers are not being outputting. Default is false. **The flags in the actual devices will be update after [update_ctrl_flags](#method.update_ctrl_flags) or [send](#method.send) functions is called.**
+    pub output_balance: bool,
+    /// If true, this controller check ack from devices. Default is false.
+    pub check_ack: bool,
+    output_enable: bool,
+    op_mode: bool,
     seq_mode: bool,
     tx_buf: Vec<u8>,
     rx_buf: Vec<u8>,
@@ -64,7 +76,11 @@ impl<L: Link> Controller<L> {
             silent_mode: props.silent_mode,
             reads_fpga_info: props.reads_fpga_info,
             force_fan: props.force_fan,
+            output_balance: props.output_balance,
+            output_enable: props.output_enable,
+            check_ack: props.check_ack,
             seq_mode: props.seq_mode,
+            op_mode: props.op_mode,
             tx_buf: vec![0x00; num_devices * EC_OUTPUT_FRAME_SIZE],
             rx_buf: vec![0x00; num_devices * EC_INPUT_FRAME_SIZE],
             fpga_infos: vec![0x00; num_devices],
@@ -87,9 +103,13 @@ impl<L: Link> Controller<L> {
             ControllerProps {
                 geometry,
                 reads_fpga_info: false,
-                seq_mode: false,
                 force_fan: false,
                 silent_mode: true,
+                op_mode: OP_MODE_NORMAL,
+                seq_mode: SEQ_MODE_POINT,
+                output_balance: false,
+                output_enable: false,
+                check_ack: false,
             },
         ))
     }
@@ -199,19 +219,24 @@ impl<L: Link> Controller<L> {
 
     /// Stop outputting
     pub async fn stop(&mut self) -> Result<bool> {
+        let silent = self.silent_mode;
+        self.silent_mode = true;
         let mut null = Null::new();
         self.send_gain(&mut null).await?;
-        self.send_header(CommandType::Pause).await
+        self.silent_mode = silent;
+        self.pause().await
     }
 
     /// Pause outputting
     pub async fn pause(&mut self) -> Result<bool> {
-        self.send_header(CommandType::Pause).await
+        self.output_enable = false;
+        self.update_ctrl_flags().await
     }
 
     /// Resume outputting
     pub async fn resume(&mut self) -> Result<bool> {
-        self.send_header(CommandType::Resume).await
+        self.output_enable = true;
+        self.update_ctrl_flags().await
     }
 
     /// Send gain and modulation to the devices
@@ -224,7 +249,8 @@ impl<L: Link> Controller<L> {
     pub async fn send<G: Gain, M: Modulation>(&mut self, g: &mut G, m: &mut M) -> Result<bool> {
         m.build()?;
 
-        self.seq_mode = false;
+        self.op_mode = OP_MODE_NORMAL;
+        self.output_enable = true;
         g.build(&self.geometry)?;
 
         let mut size = 0;
@@ -232,7 +258,13 @@ impl<L: Link> Controller<L> {
 
         loop {
             let mut msg_id = 0;
-            Logic::pack_header_mod(m, self.ctrl_flag(), &mut self.tx_buf, &mut msg_id);
+            Logic::pack_header_mod(
+                m,
+                self.ctrl_flag(),
+                self.cmd_flag(),
+                &mut self.tx_buf,
+                &mut msg_id,
+            );
 
             self.link.send(&self.tx_buf[0..size])?;
             let r = self.wait_msg_processed(msg_id, 50).await?;
@@ -249,7 +281,8 @@ impl<L: Link> Controller<L> {
     /// * `g` - Gain
     ///
     pub async fn send_gain<G: Gain>(&mut self, g: &mut G) -> Result<bool> {
-        self.seq_mode = false;
+        self.op_mode = OP_MODE_NORMAL;
+        self.output_enable = true;
         g.build(&self.geometry)?;
 
         let mut size = 0;
@@ -259,36 +292,13 @@ impl<L: Link> Controller<L> {
         Logic::pack_header(
             CommandType::Op,
             self.ctrl_flag(),
+            self.cmd_flag(),
             &mut self.tx_buf,
             &mut msg_id,
         );
 
         self.link.send(&self.tx_buf[0..size])?;
         self.wait_msg_processed(msg_id, 50).await
-    }
-
-    /// Send gain to the devices without waiting
-    ///
-    /// # Arguments
-    ///
-    /// * `g` - Gain
-    ///
-    pub fn send_gain_without_wait<G: Gain>(&mut self, g: &mut G) -> Result<bool> {
-        self.seq_mode = false;
-        g.build(&self.geometry)?;
-
-        let mut size = 0;
-        Logic::pack_body(g, &mut self.tx_buf, &mut size);
-
-        let mut msg_id = 0;
-        Logic::pack_header(
-            CommandType::Op,
-            self.ctrl_flag(),
-            &mut self.tx_buf,
-            &mut msg_id,
-        );
-
-        self.link.send(&self.tx_buf[0..size])
     }
 
     /// Send modulation to the devices
@@ -300,10 +310,16 @@ impl<L: Link> Controller<L> {
     pub async fn send_modulation<M: Modulation>(&mut self, m: &mut M) -> Result<bool> {
         m.build()?;
 
-        let size = std::mem::size_of::<RxGlobalHeader>();
+        let size = std::mem::size_of::<GlobalHeader>();
         loop {
             let mut msg_id = 0;
-            Logic::pack_header_mod(m, self.ctrl_flag(), &mut self.tx_buf, &mut msg_id);
+            Logic::pack_header_mod(
+                m,
+                self.ctrl_flag(),
+                self.cmd_flag(),
+                &mut self.tx_buf,
+                &mut msg_id,
+            );
             self.link.send(&self.tx_buf[0..size])?;
             let r = self.wait_msg_processed(msg_id, 50).await?;
             if !r || m.finished() {
@@ -319,12 +335,14 @@ impl<L: Link> Controller<L> {
     /// * `s` - Sequence
     ///
     pub async fn send_seq(&mut self, s: &mut PointSequence) -> Result<bool> {
-        self.seq_mode = true;
+        self.op_mode = OP_MODE_SEQ;
+        self.seq_mode = SEQ_MODE_POINT;
         loop {
             let mut msg_id = 0;
             Logic::pack_header(
                 CommandType::PointSeqMode,
                 self.ctrl_flag(),
+                self.cmd_flag(),
                 &mut self.tx_buf,
                 &mut msg_id,
             );
@@ -334,6 +352,7 @@ impl<L: Link> Controller<L> {
 
             let r = self.wait_msg_processed(msg_id, 50).await?;
             if !r || s.finished() {
+                self.output_enable = true;
                 return Ok(r);
             }
         }
@@ -346,12 +365,14 @@ impl<L: Link> Controller<L> {
     /// * `s` - Sequence
     ///
     pub async fn send_gain_seq(&mut self, s: &mut GainSequence) -> Result<bool> {
-        self.seq_mode = true;
+        self.op_mode = OP_MODE_SEQ;
+        self.seq_mode = SEQ_MODE_GAIN;
         loop {
             let mut msg_id = 0;
             Logic::pack_header(
                 CommandType::GainSeqMode,
                 self.ctrl_flag(),
+                self.cmd_flag(),
                 &mut self.tx_buf,
                 &mut msg_id,
             );
@@ -360,6 +381,7 @@ impl<L: Link> Controller<L> {
             self.link.send(&self.tx_buf[0..size])?;
             let r = self.wait_msg_processed(msg_id, 50).await?;
             if !r || s.finished() {
+                self.output_enable = true;
                 return Ok(r);
             }
         }
@@ -370,6 +392,9 @@ impl<L: Link> Controller<L> {
         fn concat_byte(high: u8, low: u16) -> u16 {
             (((high as u16) << 8) & 0xFF00) | (low & 0x00FF)
         }
+
+        let check_ack = self.check_ack;
+        self.check_ack = true;
 
         let num_devices = self.geometry.num_devices();
         let mut cpu_versions = vec![0x0000; num_devices];
@@ -392,6 +417,8 @@ impl<L: Link> Controller<L> {
             *ver = concat_byte(self.rx_buf[2 * i], *ver);
         }
 
+        self.check_ack = check_ack;
+
         let mut infos = Vec::with_capacity(num_devices);
         for i in 0..num_devices {
             infos.push(FirmwareInfo::new(
@@ -413,31 +440,55 @@ impl<L: Link> Controller<L> {
                 seq_mode: self.seq_mode,
                 silent_mode: self.silent_mode,
                 force_fan: self.force_fan,
+                op_mode: self.op_mode,
+                output_balance: self.output_balance,
+                output_enable: self.output_enable,
+                check_ack: self.check_ack,
             },
         }
     }
 
-    fn ctrl_flag(&self) -> RxGlobalControlFlags {
-        let mut header = RxGlobalControlFlags::NONE;
+    fn ctrl_flag(&self) -> FPGAControlFlags {
+        let mut header = FPGAControlFlags::NONE;
+        if self.output_enable {
+            header |= FPGAControlFlags::OUTPUT_ENABLE;
+        }
+        if self.output_balance {
+            header |= FPGAControlFlags::OUTPUT_BALANCE;
+        }
         if self.silent_mode {
-            header |= RxGlobalControlFlags::SILENT;
-        }
-        if self.seq_mode {
-            header |= RxGlobalControlFlags::SEQ_MODE;
-        }
-        if self.reads_fpga_info {
-            header |= RxGlobalControlFlags::READ_FPGA_INFO;
+            header |= FPGAControlFlags::SILENT;
         }
         if self.force_fan {
-            header |= RxGlobalControlFlags::FORCE_FAN;
+            header |= FPGAControlFlags::FORCE_FAN;
+        }
+        if self.op_mode {
+            header |= FPGAControlFlags::OP_MODE;
+        }
+        if self.seq_mode {
+            header |= FPGAControlFlags::SEQ_MODE;
+        }
+        header
+    }
+
+    fn cmd_flag(&self) -> CPUControlFlags {
+        let mut header = CPUControlFlags::NONE;
+        if self.reads_fpga_info {
+            header |= CPUControlFlags::READS_FPGA_INFO;
         }
         header
     }
 
     async fn send_header(&mut self, cmd: CommandType) -> Result<bool> {
-        let send_size = std::mem::size_of::<RxGlobalHeader>();
+        let send_size = std::mem::size_of::<GlobalHeader>();
         let mut msg_id: u8 = 0;
-        Logic::pack_header(cmd, self.ctrl_flag(), &mut self.tx_buf, &mut msg_id);
+        Logic::pack_header(
+            cmd,
+            self.ctrl_flag(),
+            self.cmd_flag(),
+            &mut self.tx_buf,
+            &mut msg_id,
+        );
         self.link.send(&self.tx_buf[0..send_size])?;
         self.wait_msg_processed(msg_id, 50).await
     }
@@ -447,6 +498,7 @@ impl<L: Link> Controller<L> {
         Logic::pack_header(
             CommandType::SetDelay,
             self.ctrl_flag(),
+            self.cmd_flag(),
             &mut self.tx_buf,
             &mut msg_id,
         );
@@ -463,6 +515,9 @@ impl<L: Link> Controller<L> {
     }
 
     async fn wait_msg_processed(&mut self, msg_id: u8, max_trial: usize) -> Result<bool> {
+        if !self.check_ack {
+            return Ok(true);
+        }
         let num_devices = self.geometry.num_devices();
         let wait = (EC_TRAFFIC_DELAY * 1000.0 / EC_DEVICE_PER_FRAME as f64 * num_devices as f64)
             .ceil() as u64;
@@ -473,7 +528,7 @@ impl<L: Link> Controller<L> {
             if Logic::is_msg_processed(num_devices, msg_id, &self.rx_buf) {
                 return Ok(true);
             }
-            thread::sleep(std::time::Duration::from_millis(wait));
+            tokio::time::sleep(std::time::Duration::from_millis(wait)).await;
         }
         Ok(false)
     }

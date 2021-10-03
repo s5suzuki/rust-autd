@@ -1,6 +1,6 @@
 [package]
 name = "autd3-timer"
-version = "1.0.0"
+version = "1.8.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -23,7 +23,7 @@ libc = "0.2"
 thiserror = "1.0.25"
 
 [target.'cfg(windows)'.dependencies]
-windows = "0.10.0"
+windows = "0.21.1"
 
 [target.'cfg(windows)'.build-dependencies]
-windows = "0.10.0"
+windows = "0.21.1"

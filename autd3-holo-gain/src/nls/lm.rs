@@ -4,7 +4,7 @@
  * Created Date: 29/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 21/07/2021
+ * Last Modified: 02/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -23,7 +23,7 @@ use autd3_core::{
 };
 use autd3_traits::Gain;
 use nalgebra::ComplexField;
-use std::{f64::consts::PI, marker::PhantomData};
+use std::marker::PhantomData;
 /// References
 /// * K.Levenberg, “A method for the solution of certain non-linear problems in least squares,” Quarterly of applied mathematics, vol.2, no.2, pp.164–168, 1944.
 /// * D.W.Marquardt, “An algorithm for least-squares estimation of non-linear parameters,” Journal of the society for Industrial and AppliedMathematics, vol.11, no.2, pp.431–441, 1963.
@@ -130,13 +130,13 @@ impl<B: Backend> Lm<B> {
         let mut tth = MatrixXc::zeros(n_param, n_param);
         Self::calc_t_th(&x, &mut tth);
 
-        let mut bhb_tth = unsafe { MatrixXc::new_uninitialized(n_param, n_param).assume_init() };
+        let mut bhb_tth = MatrixXc::zeros(n_param, n_param);
         B::hadamard_product(&bhb, &tth, &mut bhb_tth);
 
-        let mut a = unsafe { MatrixX::new_uninitialized(n_param, n_param).assume_init() };
+        let mut a = MatrixX::zeros(n_param, n_param);
         B::real(&bhb_tth, &mut a);
 
-        let mut g = unsafe { VectorX::new_uninitialized(n_param).assume_init() };
+        let mut g = VectorX::zeros(n_param);
         B::imag(&bhb_tth.column_sum(), &mut g);
 
         let a_max = a.diagonal().max();
@@ -157,9 +157,9 @@ impl<B: Backend> Lm<B> {
         let mut fx = B::dot_c(&t, &tmp_vec_c).real();
 
         let identity = MatrixX::identity(n_param, n_param);
-        let mut tmp_vec = unsafe { VectorX::new_uninitialized(n_param).assume_init() };
-        let mut x_new = unsafe { VectorX::new_uninitialized(n_param).assume_init() };
-        let mut h_lm = unsafe { VectorX::new_uninitialized(n_param).assume_init() };
+        let mut tmp_vec = VectorX::zeros(n_param);
+        let mut x_new = VectorX::zeros(n_param);
+        let mut h_lm = VectorX::zeros(n_param);
         for _ in 0..self.k_max {
             if B::max_coefficient(&g).abs() <= self.eps_1 {
                 break;
@@ -219,7 +219,7 @@ impl<B: Backend> Lm<B> {
         let mut trans_idx = 0;
         for j in 0..n {
             let duty = 0xFF;
-            let phase = x[j] % (2. * PI) / (2. * PI);
+            let phase = x[j];
             let phase = autd3_core::utils::to_phase(phase);
             self.data[dev_idx][trans_idx] = autd3_core::utils::pack_to_u16(duty, phase);
             trans_idx += 1;

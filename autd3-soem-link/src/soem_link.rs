@@ -4,7 +4,7 @@
  * Created Date: 02/09/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 21/07/2021
+ * Last Modified: 03/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -24,7 +24,11 @@ use autd3_core::{
 use autd3_timer::{Timer, TimerCallback};
 
 use std::{
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc, Condvar, Mutex,
+    },
+    thread::{self, JoinHandle},
     usize,
     vec::Vec,
 };
@@ -34,8 +38,11 @@ use libc::{c_char, c_void};
 use crate::error::SoemError;
 use crate::native_methods::*;
 
+const SEND_BUF_SIZE: usize = 32;
+
 struct SoemCallback<F: Fn(&str) + Send> {
     lock: AtomicBool,
+    sent: Arc<AtomicBool>,
     expected_wkc: i32,
     error_handle: Option<F>,
 }
@@ -48,6 +55,7 @@ impl<F: Fn(&str) + Send> TimerCallback for SoemCallback<F> {
                     .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             {
                 ec_send_processdata();
+                self.sent.store(true, Ordering::Release);
                 if self.expected_wkc != ec_receive_processdata(EC_TIMEOUTRET as i32)
                     && !self.error_handle()
                 {
@@ -133,12 +141,18 @@ impl<F: Fn(&str) + Send> SoemCallback<F> {
 pub struct SoemLink<F: Fn(&str) + Send> {
     timer_handle: Option<Box<Timer<SoemCallback<F>>>>,
     error_handle: Option<F>,
-    is_open: bool,
+    is_open: Arc<AtomicBool>,
     ifname: std::ffi::CString,
     dev_num: u16,
     ec_sync0_cyctime_ns: u32,
     ec_sm2_cyctime_ns: u32,
-    io_map: Vec<u8>,
+    send_buf: Arc<Mutex<Vec<Vec<u8>>>>,
+    send_buf_cursor: Arc<AtomicUsize>,
+    send_buf_size: Arc<AtomicUsize>,
+    send_lock: Arc<(Mutex<()>, Condvar)>,
+    send_thread: Option<JoinHandle<()>>,
+    sent: Arc<AtomicBool>,
+    io_map: Arc<Mutex<Vec<u8>>>,
 }
 
 impl<F: Fn(&str) + Send> SoemLink<F> {
@@ -149,9 +163,15 @@ impl<F: Fn(&str) + Send> SoemLink<F> {
             ec_sync0_cyctime_ns: EC_SYNC0_CYCLE_TIME_NANO_SEC * cycle_ticks,
             timer_handle: None,
             error_handle: Some(error_handle),
-            is_open: false,
+            is_open: Arc::new(AtomicBool::new(false)),
             ifname: std::ffi::CString::new(ifname.to_string()).unwrap(),
-            io_map: vec![],
+            io_map: Arc::new(Mutex::new(vec![])),
+            send_buf: Arc::new(Mutex::new(vec![])),
+            send_buf_cursor: Arc::new(AtomicUsize::new(0)),
+            send_buf_size: Arc::new(AtomicUsize::new(0)),
+            send_lock: Arc::new((Mutex::new(()), Condvar::new())),
+            send_thread: None,
+            sent: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -201,7 +221,10 @@ impl<F: Fn(&str) + Send> SoemLink<F> {
 
 impl<F: Fn(&str) + Send> Link for SoemLink<F> {
     fn open(&mut self) -> Result<()> {
+        let output_size = EC_OUTPUT_FRAME_SIZE * self.dev_num as usize;
         let size = (EC_OUTPUT_FRAME_SIZE + EC_INPUT_FRAME_SIZE) * self.dev_num as usize;
+
+        self.send_buf = Arc::new(Mutex::new(vec![vec![0x00; output_size]; SEND_BUF_SIZE]));
 
         unsafe {
             if ec_init(self.ifname.as_ptr() as *const c_char) != 1 {
@@ -211,8 +234,8 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
                 .into());
             }
 
-            self.io_map = vec![0x00; size];
-            let wc = ec_config(0, self.io_map.as_mut_ptr() as *mut c_void) as u16;
+            self.io_map = Arc::new(Mutex::new(vec![0x00; size]));
+            let wc = ec_config(0, self.io_map.lock().unwrap().as_mut_ptr() as *mut c_void) as u16;
             if wc != self.dev_num {
                 return Err(SoemError::SlaveNotFound(wc, self.dev_num).into());
             }
@@ -244,12 +267,63 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
             Self::setup_sync0(1, self.dev_num, self.ec_sync0_cyctime_ns);
         }
 
-        self.is_open = true;
+        self.is_open.store(true, Ordering::Release);
+        let is_open = self.is_open.clone();
+        let send_lock = self.send_lock.clone();
+        let send_buf = self.send_buf.clone();
+        let send_buf_size = self.send_buf_size.clone();
+        let send_buf_cursor = self.send_buf_cursor.clone();
+        let sent = self.sent.clone();
+        let io_map = self.io_map.clone();
+        let ec_sm2_cycle_time_ns = self.ec_sm2_cyctime_ns;
+        self.send_thread = Some(thread::spawn(move || {
+            while is_open.load(Ordering::Acquire) {
+                {
+                    let (lock, cond) = &*send_lock;
+                    let mut mtx = lock.lock().unwrap();
+                    if send_buf_size.load(Ordering::Acquire) == 0 {
+                        loop {
+                            mtx = cond.wait(mtx).unwrap();
+                            if !is_open.load(Ordering::Acquire)
+                                || send_buf_size.load(Ordering::Acquire) != 0
+                            {
+                                break;
+                            }
+                        }
+                    }
+                    if !is_open.load(Ordering::Acquire) {
+                        return;
+                    }
+                    let cursor = send_buf_cursor.load(Ordering::Acquire);
+                    let size = send_buf_size.load(Ordering::Acquire);
+                    let idx = if cursor >= size {
+                        cursor - size
+                    } else {
+                        cursor + SEND_BUF_SIZE - size
+                    };
+                    unsafe {
+                        let src = send_buf.lock().unwrap()[idx].as_ptr();
+                        std::ptr::copy_nonoverlapping(
+                            src,
+                            io_map.lock().unwrap().as_mut_ptr(),
+                            output_size,
+                        );
+                    }
+                    send_buf_size.fetch_sub(1, Ordering::AcqRel);
+                }
+                sent.store(false, Ordering::Release);
+                while is_open.load(Ordering::Acquire) && !sent.load(Ordering::Acquire) {
+                    std::thread::sleep(std::time::Duration::from_nanos(ec_sm2_cycle_time_ns as _));
+                }
+            }
+        }));
+
         let expected_wkc = unsafe { (ec_group[0].outputsWKC * 2 + ec_group[0].inputsWKC) as i32 };
         self.timer_handle = Some(Timer::start(
             SoemCallback {
                 lock: AtomicBool::new(false),
                 expected_wkc,
+                sent: self.sent.clone(),
                 error_handle: self.error_handle.take(),
             },
             self.ec_sm2_cyctime_ns,
@@ -259,17 +333,19 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
     }
 
     fn close(&mut self) -> Result<()> {
-        if !self.is_open {
+        if !self.is_open.load(Ordering::Acquire) {
             return Ok(());
         }
-        self.is_open = false;
 
-        unsafe {
-            std::ptr::write_bytes(
-                self.io_map.as_mut_ptr(),
-                0x00,
-                self.dev_num as usize * EC_OUTPUT_FRAME_SIZE,
-            );
+        while self.send_buf_size.load(Ordering::Acquire) > 0 {
+            std::thread::sleep(std::time::Duration::from_nanos(self.ec_sm2_cyctime_ns as _));
+        }
+
+        self.is_open.store(false, Ordering::Release);
+        let (_, cvar) = &*self.send_lock;
+        cvar.notify_one();
+        if let Some(th) = self.send_thread.take() {
+            let _ = th.join();
         }
 
         if let Some(timer) = self.timer_handle.take() {
@@ -289,41 +365,56 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
     }
 
     fn send(&mut self, data: &[u8]) -> Result<bool> {
-        if !self.is_open {
+        if !self.is_open.load(Ordering::Acquire) {
             return Err(AutdError::LinkClosed.into());
         }
 
-        unsafe {
-            if data.len() > HEADER_SIZE {
-                Self::write_header_body(
-                    data,
-                    self.io_map.as_mut_ptr(),
-                    self.dev_num as usize,
-                    HEADER_SIZE,
-                    BODY_SIZE,
-                );
-            } else {
-                Self::write_header(
-                    data,
-                    self.io_map.as_mut_ptr(),
-                    self.dev_num as usize,
-                    HEADER_SIZE,
-                    BODY_SIZE,
-                );
-            }
+        while self.send_buf_size.load(Ordering::Acquire) == SEND_BUF_SIZE {
+            std::thread::sleep(std::time::Duration::from_nanos(self.ec_sm2_cyctime_ns as _));
         }
+
+        let (lock, cond) = &*self.send_lock;
+        {
+            let _mtx = lock.lock();
+            let ptr = self.send_buf.lock().unwrap()[self.send_buf_cursor.load(Ordering::Acquire)]
+                .as_mut_ptr();
+            unsafe {
+                if data.len() > HEADER_SIZE {
+                    Self::write_header_body(
+                        data,
+                        ptr,
+                        self.dev_num as usize,
+                        HEADER_SIZE,
+                        BODY_SIZE,
+                    );
+                } else {
+                    Self::write_header(data, ptr, self.dev_num as usize, HEADER_SIZE, BODY_SIZE);
+                }
+            }
+            self.send_buf_size.fetch_add(1, Ordering::AcqRel);
+            self.send_buf_cursor.fetch_add(1, Ordering::AcqRel);
+            let _ = self.send_buf_cursor.compare_exchange(
+                SEND_BUF_SIZE,
+                0,
+                Ordering::Acquire,
+                Ordering::Relaxed,
+            );
+        }
+        cond.notify_one();
 
         Ok(true)
     }
 
     fn read(&mut self, data: &mut [u8]) -> Result<bool> {
-        if !self.is_open {
+        if !self.is_open.load(Ordering::Acquire) {
             return Err(AutdError::LinkClosed.into());
         }
 
         unsafe {
             std::ptr::copy_nonoverlapping(
                 self.io_map
+                    .lock()
+                    .unwrap()
                     .as_ptr()
                     .add(EC_OUTPUT_FRAME_SIZE * self.dev_num as usize),
                 data.as_mut_ptr(),
@@ -334,6 +425,6 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
     }
 
     fn is_open(&self) -> bool {
-        self.is_open
+        self.is_open.load(Ordering::Acquire)
     }
 }

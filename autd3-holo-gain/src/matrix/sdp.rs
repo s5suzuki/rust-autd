@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/05/2021
+ * Last Modified: 02/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -79,7 +79,7 @@ impl<B: Backend> Sdp<B> {
             self.amps.iter().map(|&a| Complex::new(a, 0.)),
         ));
         let b = generate_propagation_matrix(geometry, &self.foci);
-        let mut pseudo_inv_b = unsafe { MatrixXc::new_uninitialized(n, m).assume_init() };
+        let mut pseudo_inv_b = MatrixXc::zeros(n, m);
         B::pseudo_inverse_svd(b.clone(), self.alpha, &mut pseudo_inv_b);
 
         let mut mm = MatrixXc::identity(m, m);

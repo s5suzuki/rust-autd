@@ -4,12 +4,14 @@
  * Created Date: 30/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 21/07/2021
+ * Last Modified: 02/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
  *
  */
+
+use std::f64::consts::PI;
 
 use anyhow::Result;
 use autd3_core::{
@@ -57,13 +59,13 @@ impl Plane {
 
     #[allow(clippy::unnecessary_wraps)]
     fn calc(&mut self, geometry: &Geometry) -> Result<()> {
-        let wavelength = geometry.wavelength;
+        let wavenum = 2.0 * PI / geometry.wavelength;
         let duty = self.duty;
         for dev in 0..geometry.num_devices() {
             for i in 0..NUM_TRANS_IN_UNIT {
                 let trp = geometry.position_by_local_idx(dev, i);
                 let dist = self.dir.dot(&trp);
-                let phase = (dist % wavelength) / wavelength;
+                let phase = wavenum * dist;
                 let phase = autd3_core::utils::to_phase(phase);
                 self.data[dev][i] = autd3_core::utils::pack_to_u16(duty, phase);
             }
