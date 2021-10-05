@@ -1,6 +1,6 @@
 [package]
 name = "autd3-soem-link"
-version = "1.8.0"
+version = "1.8.1"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 

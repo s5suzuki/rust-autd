@@ -4,7 +4,7 @@
  * Created Date: 02/09/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 03/10/2021
+ * Last Modified: 05/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -201,22 +201,6 @@ impl<F: Fn(&str) + Send> SoemLink<F> {
             );
         }
     }
-
-    unsafe fn write_header(
-        src: &[u8],
-        dst: *mut u8,
-        dev_num: usize,
-        header_size: usize,
-        body_size: usize,
-    ) {
-        for i in 0..dev_num {
-            std::ptr::copy_nonoverlapping(
-                src.as_ptr(),
-                dst.add((header_size + body_size) * i + body_size),
-                header_size,
-            );
-        }
-    }
 }
 
 impl<F: Fn(&str) + Send> Link for SoemLink<F> {
@@ -379,17 +363,7 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
             let ptr = self.send_buf.lock().unwrap()[self.send_buf_cursor.load(Ordering::Acquire)]
                 .as_mut_ptr();
             unsafe {
-                if data.len() > HEADER_SIZE {
-                    Self::write_header_body(
-                        data,
-                        ptr,
-                        self.dev_num as usize,
-                        HEADER_SIZE,
-                        BODY_SIZE,
-                    );
-                } else {
-                    Self::write_header(data, ptr, self.dev_num as usize, HEADER_SIZE, BODY_SIZE);
-                }
+                Self::write_header_body(data, ptr, self.dev_num as usize, HEADER_SIZE, BODY_SIZE);
             }
             self.send_buf_size.fetch_add(1, Ordering::AcqRel);
             self.send_buf_cursor.fetch_add(1, Ordering::AcqRel);
