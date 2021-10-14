@@ -4,7 +4,7 @@
  * Created Date: 02/09/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 05/10/2021
+ * Last Modified: 14/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -320,6 +320,9 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
         if !self.is_open.load(Ordering::Acquire) {
             return Ok(());
         }
+
+        let (_, cond) = &*self.send_lock;
+        cond.notify_one();
 
         while self.send_buf_size.load(Ordering::Acquire) > 0 {
             std::thread::sleep(std::time::Duration::from_nanos(self.ec_sm2_cyctime_ns as _));

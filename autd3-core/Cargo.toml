@@ -1,6 +1,6 @@
 [package]
 name = "autd3-core"
-version = "1.8.0"
+version = "1.9.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -16,11 +16,11 @@ exclude = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.40"
-bitflags = "1.2.1"
+anyhow = "1.0.44"
+bitflags = "1.3.2"
 nalgebra = "0.29.0"
 thiserror = "1.0.25"
-autd3-traits = {path="../autd3-traits", version="1.8.0"}
+autd3-traits = {path="../autd3-traits", version="1.9.0"}
 
 [features]
 phase_inverted = []
