@@ -1,6 +1,6 @@
 [package]
 name = "autd3-traits"
-version = "1.8.0"
+version = "1.9.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -19,5 +19,5 @@ exclude = [
 proc-macro = true
 
 [dependencies]
-quote = "1.0.9"
-syn = "1.0.72"
+quote = "1.0.10"
+syn = "1.0.80"

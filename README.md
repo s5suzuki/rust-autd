@@ -4,13 +4,13 @@
 
 [autd3 library](https://github.com/shinolab/autd3-library-software) for Rust
 
-version: 1.8.0
+version: 1.9.0
 
 ## :hammer_and_wrench: Install with Cargo
 
 ```
 [dependencies]
-autd3 = "1.8.0"
+autd3 = "1.9.0"
 ```
 
 ## :ballot_box_with_check: Requirements
@@ -19,7 +19,7 @@ If you use Windows and `SOEMLink`, install [Npcap](https://nmap.org/npcap/) with
 
 ## :green_book: Documents
 
-* Documents is [here](https://docs.rs/autd3/1.0.0/autd3/).
+* Documents is [here](https://docs.rs/autd3/).
 
 ## :beginner: Example
 

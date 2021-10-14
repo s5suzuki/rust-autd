@@ -4,7 +4,7 @@
  * Created Date: 05/06/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 18/06/2021
+ * Last Modified: 14/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -14,7 +14,7 @@
 use std::f64::consts::PI;
 
 use anyhow::Result;
-use autd3_core::modulation::Modulation;
+use autd3_core::{hardware_defined, modulation::Modulation};
 use autd3_traits::Modulation;
 
 use num::integer::gcd;
@@ -27,7 +27,8 @@ pub struct SinePressure {
     freq: usize,
     amp: f64,
     offset: f64,
-    sampling_freq_div: u16,
+    sampling_freq_div: usize,
+    built: bool,
 }
 
 impl SinePressure {
@@ -58,6 +59,7 @@ impl SinePressure {
             amp,
             offset,
             sampling_freq_div: 10,
+            built: false,
         }
     }
 

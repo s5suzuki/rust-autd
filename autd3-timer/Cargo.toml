@@ -1,6 +1,6 @@
 [package]
 name = "autd3-timer"
-version = "1.8.0"
+version = "1.9.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -16,11 +16,11 @@ exclude = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-cc = "1.0"
+cc = "1.0.71"
 
 [dependencies]
-libc = "0.2"
-thiserror = "1.0.25"
+libc = "0.2.103"
+thiserror = "1.0.30"
 
 [target.'cfg(windows)'.dependencies]
 windows = "0.21.1"
