@@ -146,7 +146,7 @@ pub struct SoemLink<F: Fn(&str) + Send> {
     dev_num: u16,
     ec_sync0_cyctime_ns: u32,
     ec_sm2_cyctime_ns: u32,
-    send_buf: Arc<Mutex<Vec<Vec<u8>>>>,
+    send_buf: Arc<Mutex<Vec<(Vec<u8>, usize)>>>,
     send_buf_cursor: Arc<AtomicUsize>,
     send_buf_size: Arc<AtomicUsize>,
     send_lock: Arc<(Mutex<()>, Condvar)>,
@@ -181,6 +181,22 @@ impl<F: Fn(&str) + Send> SoemLink<F> {
         }
     }
 
+    unsafe fn write_header(
+        src: &[u8],
+        dst: *mut u8,
+        dev_num: usize,
+        header_size: usize,
+        body_size: usize,
+    ) {
+        for i in 0..dev_num {
+            std::ptr::copy_nonoverlapping(
+                src.as_ptr(),
+                dst.add((header_size + body_size) * i + body_size),
+                header_size,
+            );
+        }
+    }
+
     unsafe fn write_header_body(
         src: &[u8],
         dst: *mut u8,
@@ -205,10 +221,15 @@ impl<F: Fn(&str) + Send> SoemLink<F> {
 
 impl<F: Fn(&str) + Send> Link for SoemLink<F> {
     fn open(&mut self) -> Result<()> {
-        let output_size = EC_OUTPUT_FRAME_SIZE * self.dev_num as usize;
         let size = (EC_OUTPUT_FRAME_SIZE + EC_INPUT_FRAME_SIZE) * self.dev_num as usize;
 
-        self.send_buf = Arc::new(Mutex::new(vec![vec![0x00; output_size]; SEND_BUF_SIZE]));
+        self.send_buf = Arc::new(Mutex::new(vec![
+            (
+                vec![0x00; HEADER_SIZE + BODY_SIZE * self.dev_num as usize],
+                0
+            );
+            SEND_BUF_SIZE
+        ]));
 
         unsafe {
             if ec_init(self.ifname.as_ptr() as *const c_char) != 1 {
@@ -260,6 +281,7 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
         let sent = self.sent.clone();
         let io_map = self.io_map.clone();
         let ec_sm2_cycle_time_ns = self.ec_sm2_cyctime_ns;
+        let dev_num = self.dev_num as usize;
         self.send_thread = Some(thread::spawn(move || {
             while is_open.load(Ordering::Acquire) {
                 {
@@ -286,12 +308,24 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
                         cursor + SEND_BUF_SIZE - size
                     };
                     unsafe {
-                        let src = send_buf.lock().unwrap()[idx].as_ptr();
-                        std::ptr::copy_nonoverlapping(
-                            src,
-                            io_map.lock().unwrap().as_mut_ptr(),
-                            output_size,
-                        );
+                        let (src, size) = &send_buf.lock().unwrap()[idx];
+                        if *size > HEADER_SIZE {
+                            Self::write_header_body(
+                                &src,
+                                io_map.lock().unwrap().as_mut_ptr(),
+                                dev_num,
+                                HEADER_SIZE,
+                                BODY_SIZE,
+                            )
+                        } else {
+                            Self::write_header(
+                                &src,
+                                io_map.lock().unwrap().as_mut_ptr(),
+                                dev_num,
+                                HEADER_SIZE,
+                                BODY_SIZE,
+                            )
+                        }
                     }
                     send_buf_size.fetch_sub(1, Ordering::AcqRel);
                 }
@@ -321,9 +355,10 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
             return Ok(());
         }
 
-        let (_, cond) = &*self.send_lock;
-        cond.notify_one();
-
+        {
+            let (_, cond) = &*self.send_lock;
+            cond.notify_one();
+        }
         while self.send_buf_size.load(Ordering::Acquire) > 0 {
             std::thread::sleep(std::time::Duration::from_nanos(self.ec_sm2_cyctime_ns as _));
         }
@@ -363,10 +398,11 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
         let (lock, cond) = &*self.send_lock;
         {
             let _mtx = lock.lock();
-            let ptr = self.send_buf.lock().unwrap()[self.send_buf_cursor.load(Ordering::Acquire)]
-                .as_mut_ptr();
+            let mut buf =
+                &mut self.send_buf.lock().unwrap()[self.send_buf_cursor.load(Ordering::Acquire)];
+            buf.1 = data.len();
             unsafe {
-                Self::write_header_body(data, ptr, self.dev_num as usize, HEADER_SIZE, BODY_SIZE);
+                std::ptr::copy_nonoverlapping(data.as_ptr(), buf.0.as_mut_ptr(), data.len());
             }
             self.send_buf_size.fetch_add(1, Ordering::AcqRel);
             self.send_buf_cursor.fetch_add(1, Ordering::AcqRel);
