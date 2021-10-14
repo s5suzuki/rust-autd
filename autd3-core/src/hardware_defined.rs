@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 02/10/2021
+ * Last Modified: 14/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -27,12 +27,13 @@ pub const ULTRASOUND_FREQUENCY: usize = 40000;
 
 pub const MOD_BUF_SIZE_MAX: usize = 65536;
 pub const MOD_SAMPLING_FREQ_BASE: f64 = 40000.0;
-pub const MOD_SAMPLING_FREQ_DIV_MAX: usize = 65535;
-pub const MOD_FRAME_SIZE: usize = 123;
+pub const MOD_SAMPLING_FREQ_DIV_MAX: usize = 65536;
+pub const MOD_FRAME_SIZE: usize = 124;
 
 pub const POINT_SEQ_BUFFER_SIZE_MAX: usize = 65536;
 pub const GAIN_SEQ_BUFFER_SIZE_MAX: usize = 2048;
 pub const SEQ_BASE_FREQ: usize = 40000;
+pub const SEQ_SAMPLING_FREQ_DIV_MAX: usize = 65536;
 
 pub type DataArray = [u16; NUM_TRANS_IN_UNIT];
 
@@ -53,21 +54,6 @@ pub const OP_MODE_SEQ: bool = true;
 pub const SEQ_MODE_POINT: bool = false;
 pub const SEQ_MODE_GAIN: bool = true;
 
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum CommandType {
-    Op = 0x00,
-    ReadCpuVerLsb = 0x02,
-    ReadCpuVerMsb = 0x03,
-    ReadFpgaVerLsb = 0x04,
-    ReadFpgaVerMsb = 0x05,
-    PointSeqMode = 0x06,
-    Clear = 0x09,
-    SetDelay = 0x0A,
-    GainSeqMode = 0x0D,
-    EmulatorSetGeometry = 0xFF,
-}
-
 bitflags! {
     pub struct CPUControlFlags : u8 {
         const NONE = 0;
@@ -76,15 +62,24 @@ bitflags! {
         const SEQ_BEGIN = 1 << 2;
         const SEQ_END = 1 << 3;
         const READS_FPGA_INFO = 1 << 4;
+        const DELAY_OFFSET = 1 << 5;
+        const WRITE_BODY = 1 << 6;
     }
 }
+
+pub const MSG_CLEAR: u8 = 0x00;
+pub const MSG_RD_CPU_V_LSB: u8 = 0x01;
+pub const MSG_RD_CPU_V_MSB: u8 = 0x02;
+pub const MSG_RD_FPGA_V_LSB: u8 = 0x03;
+pub const MSG_RD_FPGA_V_MSB: u8 = 0x04;
+pub const MSG_EMU_GEOMETRY_SET: u8 = 0x05;
+pub const MSG_NORMAL_BASE: u8 = 0x06;
 
 #[repr(C)]
 pub struct GlobalHeader {
     pub msg_id: u8,
-    pub ctrl_flag: FPGAControlFlags,
-    pub command: CommandType,
-    pub command_flag: CPUControlFlags,
+    pub fpga_flag: FPGAControlFlags,
+    pub cpu_flag: CPUControlFlags,
     pub mod_size: u8,
     pub mod_data: [u8; MOD_FRAME_SIZE],
 }

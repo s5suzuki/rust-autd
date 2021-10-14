@@ -17,8 +17,10 @@ use anyhow::Result;
 
 use autd3_core::{
     geometry::Geometry,
-    hardware_defined::CommandType,
-    hardware_defined::{FPGAControlFlags, GlobalHeader, NUM_TRANS_IN_UNIT},
+    hardware_defined::{
+        FPGAControlFlags, GlobalHeader, MSG_EMU_GEOMETRY_SET, MSG_RD_CPU_V_LSB, MSG_RD_CPU_V_MSB,
+        MSG_RD_FPGA_V_LSB, MSG_RD_FPGA_V_MSB, NUM_TRANS_IN_UNIT,
+    },
     link::Link,
 };
 
@@ -27,7 +29,6 @@ pub struct EmulatorLink {
     socket: Option<UdpSocket>,
     geometry_buf: Vec<u8>,
     last_msg_id: u8,
-    last_cmd: CommandType,
 }
 
 impl EmulatorLink {
@@ -38,9 +39,8 @@ impl EmulatorLink {
 
         unsafe {
             let uh = geometry_buf.as_mut_ptr() as *mut GlobalHeader;
-            (*uh).msg_id = 0x00;
-            (*uh).ctrl_flag = FPGAControlFlags::NONE;
-            (*uh).command = CommandType::EmulatorSetGeometry;
+            (*uh).msg_id = MSG_EMU_GEOMETRY_SET;
+            (*uh).fpga_flag = FPGAControlFlags::NONE;
             (*uh).mod_size = 0x00;
 
             let mut cursor = geometry_buf.as_mut_ptr().add(size_of::<GlobalHeader>()) as *mut f32;
@@ -68,7 +68,6 @@ impl EmulatorLink {
             geometry_buf,
             socket: None,
             last_msg_id: 0,
-            last_cmd: CommandType::Op,
         }
     }
 }
@@ -94,7 +93,6 @@ impl Link for EmulatorLink {
             unsafe {
                 let uh = data.as_ptr() as *mut GlobalHeader;
                 self.last_msg_id = (*uh).msg_id;
-                self.last_cmd = (*uh).command;
             }
         }
         Ok(true)
@@ -111,17 +109,11 @@ impl Link for EmulatorLink {
             }
         };
 
-        match self.last_cmd {
-            CommandType::Op => (),
-            CommandType::ReadCpuVerLsb => set(0xFF),
-            CommandType::ReadCpuVerMsb => set(0xFF),
-            CommandType::ReadFpgaVerLsb => set(0xFF),
-            CommandType::ReadFpgaVerMsb => set(0xFF),
-            CommandType::PointSeqMode => (),
-            CommandType::GainSeqMode => (),
-            CommandType::Clear => (),
-            CommandType::SetDelay => (),
-            CommandType::EmulatorSetGeometry => (),
+        match self.last_msg_id {
+            MSG_RD_CPU_V_LSB | MSG_RD_CPU_V_MSB | MSG_RD_FPGA_V_LSB | MSG_RD_FPGA_V_MSB => {
+                set(0xFF)
+            }
+            _ => (),
         }
 
         Ok(true)

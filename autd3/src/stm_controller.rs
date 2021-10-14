@@ -4,7 +4,7 @@
  * Created Date: 26/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 02/10/2021
+ * Last Modified: 14/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -16,7 +16,7 @@ use anyhow::Result;
 use autd3_core::{
     ec_config::EC_OUTPUT_FRAME_SIZE,
     gain::Gain,
-    hardware_defined::{CPUControlFlags, CommandType, FPGAControlFlags},
+    hardware_defined::{CPUControlFlags, FPGAControlFlags},
     link::Link,
     logic::Logic,
 };
@@ -91,17 +91,15 @@ impl<L: Link> StmController<L> {
 
         let mut build_buf = vec![0x00; self.props.geometry.num_devices() * EC_OUTPUT_FRAME_SIZE];
 
-        let mut _size = 0;
-        Logic::pack_body(g, &mut build_buf, &mut _size);
-
-        let mut _msg_id = 0;
+        let msg_id = autd3_core::logic::Logic::get_id();
         Logic::pack_header(
-            CommandType::Op,
-            self.ctrl_flag(),
+            msg_id,
+            self.fpga_flag(),
             CPUControlFlags::NONE,
             &mut build_buf,
-            &mut _msg_id,
         );
+
+        Logic::pack_body(g, &mut build_buf);
 
         self.callback.add(build_buf);
 
@@ -134,7 +132,7 @@ impl<L: Link> StmController<L> {
         self.callback.clear();
     }
 
-    fn ctrl_flag(&self) -> FPGAControlFlags {
+    fn fpga_flag(&self) -> FPGAControlFlags {
         let mut header = FPGAControlFlags::OUTPUT_ENABLE;
         if self.props.output_balance {
             header |= FPGAControlFlags::OUTPUT_BALANCE;

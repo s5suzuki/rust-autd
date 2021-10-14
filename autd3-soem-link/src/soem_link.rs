@@ -138,6 +138,8 @@ impl<F: Fn(&str) + Send> SoemCallback<F> {
     }
 }
 
+type SendBuf = (Vec<u8>, usize);
+
 pub struct SoemLink<F: Fn(&str) + Send> {
     timer_handle: Option<Box<Timer<SoemCallback<F>>>>,
     error_handle: Option<F>,
@@ -146,7 +148,7 @@ pub struct SoemLink<F: Fn(&str) + Send> {
     dev_num: u16,
     ec_sync0_cyctime_ns: u32,
     ec_sm2_cyctime_ns: u32,
-    send_buf: Arc<Mutex<Vec<(Vec<u8>, usize)>>>,
+    send_buf: Arc<Mutex<Vec<SendBuf>>>,
     send_buf_cursor: Arc<AtomicUsize>,
     send_buf_size: Arc<AtomicUsize>,
     send_lock: Arc<(Mutex<()>, Condvar)>,
@@ -311,7 +313,7 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
                         let (src, size) = &send_buf.lock().unwrap()[idx];
                         if *size > HEADER_SIZE {
                             Self::write_header_body(
-                                &src,
+                                src,
                                 io_map.lock().unwrap().as_mut_ptr(),
                                 dev_num,
                                 HEADER_SIZE,
@@ -319,7 +321,7 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
                             )
                         } else {
                             Self::write_header(
-                                &src,
+                                src,
                                 io_map.lock().unwrap().as_mut_ptr(),
                                 dev_num,
                                 HEADER_SIZE,

@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/09/2021
+ * Last Modified: 14/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -16,7 +16,8 @@ use crate::{
     gain::Gain,
     geometry::{Geometry, Vector3},
     hardware_defined::{
-        DataArray, GainMode, GAIN_SEQ_BUFFER_SIZE_MAX, POINT_SEQ_BUFFER_SIZE_MAX, SEQ_BASE_FREQ,
+        self, DataArray, GainMode, GAIN_SEQ_BUFFER_SIZE_MAX, POINT_SEQ_BUFFER_SIZE_MAX,
+        SEQ_BASE_FREQ,
     },
 };
 use anyhow::Result;
@@ -26,7 +27,7 @@ pub trait Sequence {
     fn set_freq(&mut self, freq: f64) -> f64;
     fn freq(&self) -> f64;
     fn sampling_freq(&self) -> f64;
-    fn sampling_freq_div(&self) -> u16;
+    fn sampling_freq_div(&mut self) -> &mut usize;
     fn sent(&self) -> usize;
     fn send(&mut self, sent: usize);
     fn finished(&self) -> bool;
@@ -35,7 +36,7 @@ pub trait Sequence {
 #[derive(Sequence)]
 pub struct PointSequence {
     control_points: Vec<(Vector3, u8)>,
-    sample_freq_div: u16,
+    sample_freq_div: usize,
     sent: usize,
 }
 
@@ -94,7 +95,7 @@ impl Default for PointSequence {
 #[derive(Sequence)]
 pub struct GainSequence {
     gains: Vec<Vec<DataArray>>,
-    sample_freq_div: u16,
+    sample_freq_div: usize,
     sent: usize,
     gain_mode: GainMode,
 }

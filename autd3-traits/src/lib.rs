@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 02/10/2021
+ * Last Modified: 14/10/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -27,7 +27,16 @@ fn impl_modulation_macro(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         impl #impl_generics Modulation for #name #ty_generics #where_clause {
             fn build(&mut self) -> Result<()>{
-                self.calc()
+                if self.built { return Ok(()); }
+                if self.sampling_freq_div > hardware_defined::MOD_SAMPLING_FREQ_DIV_MAX { return Err(autd3_core::error::AutdError::FrequencyDivisionRatioOutOfRange(hardware_defined::MOD_SAMPLING_FREQ_DIV_MAX).into()); }
+                let r = self.calc();
+                if self.buffer().len() > hardware_defined::MOD_BUF_SIZE_MAX{ return Err(autd3_core::error::AutdError::ModulationOutOfBuffer(hardware_defined::MOD_BUF_SIZE_MAX).into()); }
+                self.built = true;
+                r
+            }
+            fn rebuild(&mut self) -> Result<()>{
+                self.built = false;
+                self.build()
             }
             fn buffer(&self) -> &[u8] {
                 &self.buffer
@@ -44,11 +53,11 @@ fn impl_modulation_macro(ast: &syn::DeriveInput) -> TokenStream {
             fn send(&mut self, sent: usize){
                 self.sent += sent;
             }
-            fn sampling_frequency_division(&self) -> u16 {
-                self.sampling_freq_div
+            fn sampling_frequency_division(&mut self) -> &mut usize {
+                &mut self.sampling_freq_div
             }
             fn sampling_freq(&self) -> f64 {
-                autd3_core::hardware_defined::MOD_SAMPLING_FREQ_BASE as f64 / self.sampling_freq_div as f64
+                hardware_defined::MOD_SAMPLING_FREQ_BASE as f64 / self.sampling_freq_div as f64
             }
         }
     };
@@ -111,7 +120,7 @@ fn impl_sequence_macro(ast: &syn::DeriveInput) -> TokenStream {
         impl #impl_generics Sequence for #name #ty_generics #where_clause {
             fn set_freq(&mut self, freq: f64) -> f64 {
                 let sample_freq = self.size() as f64 * freq;
-                let div = (SEQ_BASE_FREQ as f64 / sample_freq) as u16;
+                let div = ((SEQ_BASE_FREQ as f64 / sample_freq) as usize).clamp(1, hardware_defined::SEQ_SAMPLING_FREQ_DIV_MAX);
                 self.sample_freq_div = div;
                 self.freq()
             }
@@ -124,8 +133,8 @@ fn impl_sequence_macro(ast: &syn::DeriveInput) -> TokenStream {
                 SEQ_BASE_FREQ as f64 / self.sample_freq_div as f64
             }
 
-            fn sampling_freq_div(&self) -> u16 {
-                self.sample_freq_div
+            fn sampling_freq_div(&mut self) -> &mut usize {
+                &mut self.sample_freq_div
             }
 
             fn sent(&self) -> usize {
