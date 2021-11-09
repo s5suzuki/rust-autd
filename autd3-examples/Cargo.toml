@@ -1,6 +1,6 @@
 [package]
 name = "autd3-examples"
-version = "1.9.0"
+version = "1.9.1"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2018"
 
@@ -23,7 +23,7 @@ required-features = ["emulator"]
 
 [dependencies]
 anyhow = "1.0.41"
-autd3 = {path="../autd3", version="1.9.0"}
+autd3 = {path="../autd3", version="1.9.1"}
 autd3-soem-link = {path="../autd3-soem-link", version="1.9.0", optional = true}
 autd3-twincat-link  = {path="../autd3-twincat-link", version="1.9.0", optional = true}
 autd3-emulator-link  = {path="../autd3-emulator-link", version="1.9.0", optional = true}

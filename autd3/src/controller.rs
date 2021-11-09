@@ -4,7 +4,7 @@
  * Created Date: 25/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 14/10/2021
+ * Last Modified: 09/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -426,30 +426,63 @@ impl<L: Link> Controller<L> {
             (((high as u16) << 8) & 0xFF00) | (low & 0x00FF)
         }
 
+        // For backward compatibility before 1.9
+        const READ_CPU_VER_LSB: u8 = 0x02;
+        const READ_CPU_VER_MSB: u8 = 0x03;
+        const READ_FPGA_VER_LSB: u8 = 0x04;
+        const READ_FPGA_VER_MSB: u8 = 0x05;
+        async fn send_command<L: Link>(
+            cnt: &mut Controller<L>,
+            msg_id: u8,
+            cmd: u8,
+        ) -> Result<bool> {
+            let send_size = std::mem::size_of::<GlobalHeader>();
+            Logic::pack_header(msg_id, cnt.fpga_flag(), cnt.cpu_flag(), &mut cnt.tx_buf);
+            cnt.tx_buf[2] = cmd;
+            cnt.link.send(&cnt.tx_buf[0..send_size])?;
+            cnt.wait_msg_processed(msg_id, 50).await
+        }
+
         let check_ack = self.check_ack;
         self.check_ack = true;
 
         let num_devices = self.geometry.num_devices();
         let mut cpu_versions = vec![0x0000; num_devices];
-        self.send_header(autd3_core::hardware_defined::MSG_RD_CPU_V_LSB)
-            .await?;
+        send_command(
+            self,
+            autd3_core::hardware_defined::MSG_RD_CPU_V_LSB,
+            READ_CPU_VER_LSB,
+        )
+        .await?;
         for (i, ver) in cpu_versions.iter_mut().enumerate().take(num_devices) {
             *ver = self.rx_buf[2 * i] as u16;
         }
-        self.send_header(autd3_core::hardware_defined::MSG_RD_CPU_V_MSB)
-            .await?;
+        send_command(
+            self,
+            autd3_core::hardware_defined::MSG_RD_CPU_V_MSB,
+            READ_CPU_VER_MSB,
+        )
+        .await?;
         for (i, ver) in cpu_versions.iter_mut().enumerate().take(num_devices) {
             *ver = concat_byte(self.rx_buf[2 * i], *ver);
         }
 
         let mut fpga_versions = vec![0x0000; num_devices];
-        self.send_header(autd3_core::hardware_defined::MSG_RD_FPGA_V_LSB)
-            .await?;
+        send_command(
+            self,
+            autd3_core::hardware_defined::MSG_RD_FPGA_V_LSB,
+            READ_FPGA_VER_LSB,
+        )
+        .await?;
         for (i, ver) in fpga_versions.iter_mut().enumerate().take(num_devices) {
             *ver = self.rx_buf[2 * i] as u16;
         }
-        self.send_header(autd3_core::hardware_defined::MSG_RD_FPGA_V_MSB)
-            .await?;
+        send_command(
+            self,
+            autd3_core::hardware_defined::MSG_RD_FPGA_V_MSB,
+            READ_FPGA_VER_MSB,
+        )
+        .await?;
         for (i, ver) in fpga_versions.iter_mut().enumerate().take(num_devices) {
             *ver = concat_byte(self.rx_buf[2 * i], *ver);
         }
