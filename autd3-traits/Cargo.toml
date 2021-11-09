@@ -2,7 +2,7 @@
 name = "autd3-traits"
 version = "1.9.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
-edition = "2018"
+edition = "2021"
 
 license = "MIT"
 description = "Wav Modulation for AUTD."
