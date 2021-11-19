@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/05/2021
+ * Last Modified: 19/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -65,8 +65,6 @@ impl<B: Backend> Naive<B> {
         );
 
         set_from_complex_drive(&mut self.data, &q, true, 1.0);
-
-        self.built = true;
         Ok(())
     }
 }

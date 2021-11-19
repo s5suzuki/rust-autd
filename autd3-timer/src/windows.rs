@@ -4,31 +4,14 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 29/05/2021
+ * Last Modified: 19/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
  *
  */
 
-mod bindings {
-    windows::include_bindings!();
-}
-
-use bindings::{
-    Windows::Win32::Media::Multimedia::timeBeginPeriod,
-    Windows::Win32::Media::Multimedia::timeEndPeriod,
-    Windows::Win32::Media::Multimedia::TIMERR_NOERROR,
-    Windows::Win32::System::SystemServices::timeKillEvent,
-    Windows::Win32::System::SystemServices::timeSetEvent,
-    Windows::Win32::System::SystemServices::LPTIMECALLBACK,
-    Windows::Win32::System::SystemServices::TIME_CALLBACK_FUNCTION,
-    Windows::Win32::System::SystemServices::TIME_KILL_SYNCHRONOUS,
-    Windows::Win32::System::SystemServices::TIME_PERIODIC,
-    Windows::Win32::System::Threading::GetCurrentProcess,
-    Windows::Win32::System::Threading::SetPriorityClass,
-    Windows::Win32::System::Threading::REALTIME_PRIORITY_CLASS,
-};
+use windows::Win32::{Media::*, System::Threading::*};
 
 use crate::error::TimerError;
 

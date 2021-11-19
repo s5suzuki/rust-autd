@@ -1,6 +1,6 @@
 [package]
 name = "autd3-core"
-version = "1.9.0"
+version = "1.9.2"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2021"
 

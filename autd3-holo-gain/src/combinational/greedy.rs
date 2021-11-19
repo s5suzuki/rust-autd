@@ -4,7 +4,7 @@
  * Created Date: 03/06/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 02/10/2021
+ * Last Modified: 19/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -85,7 +85,7 @@ impl Greedy {
         for dev in 0..geometry.num_devices() {
             for i in 0..NUM_TRANS_IN_UNIT {
                 let trans_pos = geometry.position_by_local_idx(dev, i);
-                let trans_dir = geometry.direction(dev);
+                let trans_dir = geometry.z_direction(dev);
                 let mut min_idx = 0;
                 let mut min_v = std::f64::INFINITY;
                 for (idx, &phase) in self.phases.iter().enumerate() {
@@ -119,8 +119,6 @@ impl Greedy {
                     autd3_core::utils::pack_to_u16(DUTY, autd3_core::utils::to_phase(phase));
             }
         }
-
-        self.built = true;
         Ok(())
     }
 }
