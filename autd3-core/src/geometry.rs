@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 06/07/2021
+ * Last Modified: 19/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -145,10 +145,6 @@ impl Geometry {
         let z_dir = device.z_direction;
         let rv = global_position - local_origin;
         Vector3::new(rv.dot(&x_dir), rv.dot(&y_dir), rv.dot(&z_dir))
-    }
-
-    pub fn direction(&self, device_idx: usize) -> Vector3 {
-        self.devices[device_idx].z_direction
     }
 
     pub fn x_direction(&self, device_idx: usize) -> Vector3 {

@@ -1,6 +1,6 @@
 [package]
 name = "autd3-timer"
-version = "1.9.0"
+version = "1.9.2"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2021"
 
@@ -23,7 +23,4 @@ libc = "0.2.103"
 thiserror = "1.0.30"
 
 [target.'cfg(windows)'.dependencies]
-windows = "0.21.1"
-
-[target.'cfg(windows)'.build-dependencies]
-windows = "0.21.1"
+windows = {version = "0.28.0", features = ["Win32_Media_Multimedia", "Win32_System_Threading", "Win32_Foundation"]}

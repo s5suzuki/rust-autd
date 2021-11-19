@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 02/10/2021
+ * Last Modified: 19/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -52,7 +52,7 @@ pub fn generate_propagation_matrix(geometry: &Geometry, foci: &[Vector3]) -> Mat
                     .map(|&fp| {
                         propagate(
                             geometry.position_by_local_idx(dev, i),
-                            geometry.direction(dev),
+                            geometry.z_direction(dev),
                             geometry.attenuation,
                             wavenum,
                             fp,

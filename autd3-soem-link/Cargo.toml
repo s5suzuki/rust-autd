@@ -1,6 +1,6 @@
 [package]
 name = "autd3-soem-link"
-version = "1.9.0"
+version = "1.9.2"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2021"
 
@@ -17,8 +17,8 @@ exclude = [
 
 [dependencies]
 libc = "0.2.95"
-autd3-core = {path="../autd3-core", version="1.9.0"}
-autd3-timer = {path="../autd3-timer", version="1.9.0"}
+autd3-core = {path="../autd3-core", version="1.9.2"}
+autd3-timer = {path="../autd3-timer", version="1.9.2"}
 anyhow = "1.0.40"
 thiserror = "1.0.25"
 
