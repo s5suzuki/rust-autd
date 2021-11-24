@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/09/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -96,7 +96,7 @@ impl Link for TwinCatLink {
         }
     }
 
-    fn read(&mut self, data: &mut [u8]) -> Result<bool> {
+    fn receive(&mut self, data: &mut [u8]) -> Result<bool> {
         let mut read_bytes: u32 = 0;
         unsafe {
             let n_err = (TC_ADS.tc_ads_sync_read_req)(

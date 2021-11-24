@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 14/10/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -13,11 +13,10 @@
 
 use crate::{
     error::AutdError,
-    gain::Gain,
+    gain::{Gain, GainData},
     geometry::{Geometry, Vector3},
     hardware_defined::{
-        self, DataArray, GainMode, GAIN_SEQ_BUFFER_SIZE_MAX, POINT_SEQ_BUFFER_SIZE_MAX,
-        SEQ_BASE_FREQ,
+        self, GainMode, GAIN_SEQ_BUFFER_SIZE_MAX, POINT_SEQ_BUFFER_SIZE_MAX, SEQ_BASE_FREQ,
     },
 };
 use anyhow::Result;
@@ -28,16 +27,12 @@ pub trait Sequence {
     fn freq(&self) -> f64;
     fn sampling_freq(&self) -> f64;
     fn sampling_freq_div(&mut self) -> &mut usize;
-    fn sent(&self) -> usize;
-    fn send(&mut self, sent: usize);
-    fn finished(&self) -> bool;
 }
 
 #[derive(Sequence)]
 pub struct PointSequence {
     control_points: Vec<(Vector3, u8)>,
     sample_freq_div: usize,
-    sent: usize,
 }
 
 impl PointSequence {
@@ -45,7 +40,6 @@ impl PointSequence {
         Self {
             control_points: vec![],
             sample_freq_div: 1,
-            sent: 0,
         }
     }
 
@@ -53,7 +47,6 @@ impl PointSequence {
         Self {
             control_points,
             sample_freq_div: 1,
-            sent: 0,
         }
     }
 
@@ -80,10 +73,6 @@ impl PointSequence {
     pub fn control_points(&self) -> &[(Vector3, u8)] {
         &self.control_points
     }
-
-    pub fn remaining(&self) -> usize {
-        self.size() - self.sent
-    }
 }
 
 impl Default for PointSequence {
@@ -94,9 +83,8 @@ impl Default for PointSequence {
 
 #[derive(Sequence)]
 pub struct GainSequence {
-    gains: Vec<Vec<DataArray>>,
+    gains: Vec<Vec<GainData>>,
     sample_freq_div: usize,
-    sent: usize,
     gain_mode: GainMode,
 }
 
@@ -109,7 +97,6 @@ impl GainSequence {
         Self {
             gains: vec![],
             sample_freq_div: 1,
-            sent: 0,
             gain_mode,
         }
     }
@@ -127,12 +114,8 @@ impl GainSequence {
         self.gains.len()
     }
 
-    pub fn gains(&self) -> &[Vec<DataArray>] {
+    pub fn gains(&self) -> &[Vec<GainData>] {
         &self.gains
-    }
-
-    pub fn remaining(&self) -> usize {
-        self.size() + 1 - self.sent
     }
 
     pub fn gain_mode(&mut self) -> &mut GainMode {

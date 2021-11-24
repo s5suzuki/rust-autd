@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 19/11/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -21,7 +21,7 @@ use crate::hardware_defined::is_missing_transducer;
 
 use super::hardware_defined::{NUM_TRANS_IN_UNIT, NUM_TRANS_X, NUM_TRANS_Y, TRANS_SPACING_MM};
 
-struct Device {
+pub struct Device {
     global_trans_positions: Vec<Vector3>,
     x_direction: Vector3,
     y_direction: Vector3,
@@ -46,7 +46,8 @@ impl Device {
                         0.,
                         1.,
                     );
-                    global_trans_positions.push(convert_to_vec3(trans_mat * local_pos));
+                    let homo = trans_mat * local_pos;
+                    global_trans_positions.push(Vector3::new(homo.x, homo.y, homo.z));
                 }
             }
         }
@@ -59,9 +60,34 @@ impl Device {
         }
     }
 
+    pub fn x_direction(&self) -> Vector3 {
+        self.x_direction
+    }
+
+    pub fn y_direction(&self) -> Vector3 {
+        self.y_direction
+    }
+
+    pub fn z_direction(&self) -> Vector3 {
+        self.z_direction
+    }
+
     fn get_direction(dir: Vector3, rotation: UnitQuaternion) -> Vector3 {
         let dir: UnitQuaternion = UnitQuaternion::from_quaternion(Quaternion::from_imag(dir));
         (rotation * dir * rotation.conjugate()).imag().normalize()
+    }
+
+    pub fn local_position(&self, global_position: Vector3) -> Vector3 {
+        let local_origin = self.global_trans_positions[0];
+        let x_dir = self.x_direction;
+        let y_dir = self.y_direction;
+        let z_dir = self.z_direction;
+        let rv = global_position - local_origin;
+        Vector3::new(rv.dot(&x_dir), rv.dot(&y_dir), rv.dot(&z_dir))
+    }
+
+    pub fn transducers(&self) -> impl Iterator<Item = &Vector3> {
+        self.global_trans_positions.iter()
     }
 }
 
@@ -127,39 +153,7 @@ impl Geometry {
         self.devices.len()
     }
 
-    pub fn position_by_global_idx(&self, global_transducer_idx: usize) -> Vector3 {
-        let local_trans_idx = global_transducer_idx % NUM_TRANS_IN_UNIT;
-        let device_idx = global_transducer_idx / NUM_TRANS_IN_UNIT;
-        self.position_by_local_idx(device_idx, local_trans_idx)
+    pub fn devices(&self) -> impl Iterator<Item = &Device> {
+        self.devices.iter()
     }
-
-    pub fn position_by_local_idx(&self, device_idx: usize, local_trans_idx: usize) -> Vector3 {
-        self.devices[device_idx].global_trans_positions[local_trans_idx]
-    }
-
-    pub fn local_position(&self, device_idx: usize, global_position: Vector3) -> Vector3 {
-        let device = &self.devices[device_idx];
-        let local_origin = device.global_trans_positions[0];
-        let x_dir = device.x_direction;
-        let y_dir = device.y_direction;
-        let z_dir = device.z_direction;
-        let rv = global_position - local_origin;
-        Vector3::new(rv.dot(&x_dir), rv.dot(&y_dir), rv.dot(&z_dir))
-    }
-
-    pub fn x_direction(&self, device_idx: usize) -> Vector3 {
-        self.devices[device_idx].x_direction
-    }
-
-    pub fn y_direction(&self, device_idx: usize) -> Vector3 {
-        self.devices[device_idx].y_direction
-    }
-
-    pub fn z_direction(&self, device_idx: usize) -> Vector3 {
-        self.devices[device_idx].z_direction
-    }
-}
-
-fn convert_to_vec3(v: Vector4) -> Vector3 {
-    Vector3::new(v.x, v.y, v.z)
 }

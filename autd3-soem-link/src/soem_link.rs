@@ -4,7 +4,7 @@
  * Created Date: 02/09/2019
  * Author: Shun Suzuki
  * -----
- * Last Modified: 14/10/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2019 Hapis Lab. All rights reserved.
@@ -420,7 +420,7 @@ impl<F: Fn(&str) + Send> Link for SoemLink<F> {
         Ok(true)
     }
 
-    fn read(&mut self, data: &mut [u8]) -> Result<bool> {
+    fn receive(&mut self, data: &mut [u8]) -> Result<bool> {
         if !self.is_open.load(Ordering::Acquire) {
             return Err(AutdError::LinkClosed.into());
         }

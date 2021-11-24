@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 14/10/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -23,7 +23,6 @@ use num::integer::gcd;
 #[derive(Modulation)]
 pub struct Sine {
     buffer: Vec<u8>,
-    sent: usize,
     freq: usize,
     amp: f64,
     offset: f64,
@@ -54,7 +53,6 @@ impl Sine {
     pub fn with_params(freq: usize, amp: f64, offset: f64) -> Self {
         Self {
             buffer: vec![],
-            sent: 0,
             freq,
             amp,
             offset,

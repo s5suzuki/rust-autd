@@ -4,7 +4,7 @@
  * Created Date: 26/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/05/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -12,14 +12,17 @@
  */
 
 use anyhow::Result;
-use autd3_core::{gain::Gain, geometry::Geometry, hardware_defined::DataArray};
+use autd3_core::{
+    gain::{Gain, GainData},
+    geometry::Geometry,
+};
 use autd3_traits::Gain;
 use std::vec;
 
 /// Gain with no output
 #[derive(Gain)]
 pub struct Null {
-    data: Vec<DataArray>,
+    data: Vec<GainData>,
     built: bool,
 }
 

@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 14/10/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -19,7 +19,6 @@ use autd3_traits::Modulation;
 #[derive(Modulation)]
 pub struct Static {
     buffer: Vec<u8>,
-    sent: usize,
     sampling_freq_div: usize,
     built: bool,
 }
@@ -39,7 +38,6 @@ impl Static {
     pub fn with_duty(duty: u8) -> Self {
         Self {
             buffer: vec![duty; 1],
-            sent: 0,
             sampling_freq_div: 10,
             built: false,
         }

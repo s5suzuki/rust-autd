@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 14/10/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -19,7 +19,7 @@ use autd3_core::{
     geometry::Geometry,
     hardware_defined::{
         FPGAControlFlags, GlobalHeader, MSG_EMU_GEOMETRY_SET, MSG_RD_CPU_V_LSB, MSG_RD_CPU_V_MSB,
-        MSG_RD_FPGA_V_LSB, MSG_RD_FPGA_V_MSB, NUM_TRANS_IN_UNIT,
+        MSG_RD_FPGA_V_LSB, MSG_RD_FPGA_V_MSB,
     },
     link::Link,
 };
@@ -44,11 +44,10 @@ impl EmulatorLink {
             (*uh).mod_size = 0x00;
 
             let mut cursor = geometry_buf.as_mut_ptr().add(size_of::<GlobalHeader>()) as *mut f32;
-            for i in 0..geometry.num_devices() {
-                let trans_id = i * NUM_TRANS_IN_UNIT;
-                let origin = geometry.position_by_global_idx(trans_id);
-                let right = geometry.x_direction(i);
-                let up = geometry.y_direction(i);
+            for device in geometry.devices() {
+                let origin = device.transducers().next().unwrap();
+                let right = device.x_direction();
+                let up = device.y_direction();
 
                 cursor.write(origin.x as f32);
                 cursor.add(1).write(origin.y as f32);
@@ -98,7 +97,7 @@ impl Link for EmulatorLink {
         Ok(true)
     }
 
-    fn read(&mut self, data: &mut [u8]) -> Result<bool> {
+    fn receive(&mut self, data: &mut [u8]) -> Result<bool> {
         for i in 0..(data.len() / 2) {
             data[i * 2 + 1] = self.last_msg_id;
         }

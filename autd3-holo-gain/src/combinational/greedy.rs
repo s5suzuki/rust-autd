@@ -4,7 +4,7 @@
  * Created Date: 03/06/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 19/11/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -16,9 +16,8 @@ use std::f64::consts::PI;
 use crate::{macros::propagate, Complex};
 use anyhow::Result;
 use autd3_core::{
-    gain::Gain,
+    gain::{Gain, GainData},
     geometry::{Geometry, Vector3},
-    hardware_defined::{DataArray, NUM_TRANS_IN_UNIT},
 };
 use autd3_traits::Gain;
 use nalgebra::ComplexField;
@@ -27,7 +26,7 @@ use nalgebra::ComplexField;
 /// * Shun Suzuki, Masahiro Fujiwara, Yasutoshi Makino, and Hiroyuki Shinoda, “Radiation Pressure Field Reconstruction for Ultrasound Midair Haptics by Greedy Algorithm with Brute-Force Search,” in IEEE Transactions on Haptics, doi: 10.1109/TOH.2021.3076489
 #[derive(Gain)]
 pub struct Greedy {
-    data: Vec<DataArray>,
+    data: Vec<GainData>,
     built: bool,
     foci: Vec<Vector3>,
     amps: Vec<f64>,
@@ -82,15 +81,14 @@ impl Greedy {
             }
         }
 
-        for dev in 0..geometry.num_devices() {
-            for i in 0..NUM_TRANS_IN_UNIT {
-                let trans_pos = geometry.position_by_local_idx(dev, i);
-                let trans_dir = geometry.z_direction(dev);
+        for (dev, data) in geometry.devices().zip(self.data.iter_mut()) {
+            let trans_dir = dev.z_direction();
+            for (&trans, d) in dev.transducers().zip(data.iter_mut()) {
                 let mut min_idx = 0;
                 let mut min_v = std::f64::INFINITY;
                 for (idx, &phase) in self.phases.iter().enumerate() {
                     transfer_foci(
-                        trans_pos,
+                        trans,
                         trans_dir,
                         phase,
                         wave_num,
@@ -114,9 +112,8 @@ impl Greedy {
                 }
 
                 const DUTY: u8 = 0xFF;
-                let phase = self.phases[min_idx].argument();
-                self.data[dev][i] =
-                    autd3_core::utils::pack_to_u16(DUTY, autd3_core::utils::to_phase(phase));
+                d.duty = DUTY;
+                d.phase = autd3_core::utils::to_phase(self.phases[min_idx].argument());
             }
         }
         Ok(())
