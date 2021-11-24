@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 19/11/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -15,16 +15,15 @@ use std::f64::consts::PI;
 
 use anyhow::Result;
 use autd3_core::{
-    gain::Gain,
+    gain::{Gain, GainData},
     geometry::{Geometry, Vector3},
-    hardware_defined::{DataArray, NUM_TRANS_IN_UNIT},
 };
 use autd3_traits::Gain;
 
 /// Gain to produce single focal point
 #[derive(Gain)]
 pub struct Focus {
-    data: Vec<DataArray>,
+    data: Vec<GainData>,
     built: bool,
     duty: u8,
     pos: Vector3,
@@ -61,13 +60,11 @@ impl Focus {
     fn calc(&mut self, geometry: &Geometry) -> Result<()> {
         let wavenum = 2.0 * PI / geometry.wavelength;
         let duty = self.duty;
-        for dev in 0..geometry.num_devices() {
-            for i in 0..NUM_TRANS_IN_UNIT {
-                let trp = geometry.position_by_local_idx(dev, i);
-                let dist = (trp - self.pos).norm();
-                let phase = wavenum * dist;
-                let phase = autd3_core::utils::to_phase(phase);
-                self.data[dev][i] = autd3_core::utils::pack_to_u16(duty, phase);
+        for (dev, data) in geometry.devices().zip(self.data.iter_mut()) {
+            for (trans, d) in dev.transducers().zip(data.iter_mut()) {
+                let dist = (trans - self.pos).norm();
+                d.duty = duty;
+                d.phase = autd3_core::utils::to_phase(wavenum * dist);
             }
         }
         Ok(())

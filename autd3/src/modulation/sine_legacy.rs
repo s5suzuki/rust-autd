@@ -4,7 +4,7 @@
  * Created Date: 28/07/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 14/10/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -21,7 +21,6 @@ use autd3_traits::Modulation;
 #[derive(Modulation)]
 pub struct SineLegacy {
     buffer: Vec<u8>,
-    sent: usize,
     freq: f64,
     amp: f64,
     offset: f64,
@@ -52,7 +51,6 @@ impl SineLegacy {
     pub fn with_params(freq: f64, amp: f64, offset: f64) -> Self {
         Self {
             buffer: vec![],
-            sent: 0,
             freq,
             amp,
             offset,

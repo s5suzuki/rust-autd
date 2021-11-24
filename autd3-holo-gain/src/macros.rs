@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 19/11/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -13,8 +13,9 @@
 
 use crate::{Complex, MatrixXc, VectorXc};
 use autd3_core::{
+    gain::GainData,
     geometry::{Geometry, Vector3},
-    hardware_defined::{DataArray, NUM_TRANS_IN_UNIT},
+    hardware_defined::NUM_TRANS_IN_UNIT,
     utils::{adjust_amp, directivity_t4010a1 as directivity},
 };
 use nalgebra::ComplexField;
@@ -46,26 +47,23 @@ pub fn generate_propagation_matrix(geometry: &Geometry, foci: &[Vector3]) -> Mat
     MatrixXc::from_iterator(
         m,
         num_trans,
-        iproduct!(0..num_device, 0..NUM_TRANS_IN_UNIT)
-            .map(|(dev, i)| {
-                foci.iter()
-                    .map(|&fp| {
-                        propagate(
-                            geometry.position_by_local_idx(dev, i),
-                            geometry.z_direction(dev),
-                            geometry.attenuation,
-                            wavenum,
-                            fp,
-                        )
+        geometry
+            .devices()
+            .map(|dev| {
+                let dir = dev.z_direction();
+                dev.transducers()
+                    .map(move |&r| {
+                        foci.iter()
+                            .map(move |&fp| propagate(r, dir, geometry.attenuation, wavenum, fp))
                     })
-                    .collect::<Vec<_>>()
+                    .flatten()
             })
             .flatten(),
     )
 }
 
 pub fn set_from_complex_drive(
-    data: &mut [DataArray],
+    data: &mut [GainData],
     drive: &VectorXc,
     normalize: bool,
     max_coefficient: f64,
@@ -79,10 +77,8 @@ pub fn set_from_complex_drive(
         } else {
             drive[j].abs() / max_coefficient
         };
-        let phase = drive[j].argument();
-        let phase = autd3_core::utils::to_phase(phase);
-        let duty = adjust_amp(f_amp);
-        data[dev_idx][trans_idx] = autd3_core::utils::pack_to_u16(duty, phase);
+        data[dev_idx][trans_idx].duty = adjust_amp(f_amp);
+        data[dev_idx][trans_idx].phase = autd3_core::utils::to_phase(drive[j].argument());
         trans_idx += 1;
         if trans_idx == NUM_TRANS_IN_UNIT {
             dev_idx += 1;

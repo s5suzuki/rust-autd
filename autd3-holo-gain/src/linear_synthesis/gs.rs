@@ -4,7 +4,7 @@
  * Created Date: 29/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 19/11/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -17,9 +17,9 @@ use crate::{
 };
 use anyhow::Result;
 use autd3_core::{
-    gain::Gain,
+    gain::{Gain, GainData},
     geometry::{Geometry, Vector3},
-    hardware_defined::{DataArray, NUM_TRANS_IN_UNIT},
+    hardware_defined::NUM_TRANS_IN_UNIT,
 };
 use autd3_traits::Gain;
 use nalgebra::ComplexField;
@@ -29,7 +29,7 @@ use std::marker::PhantomData;
 /// * Asier Marzo and Bruce W Drinkwater. Holographic acoustic tweezers.Proceedings of theNational Academy of Sciences, 116(1):84–89, 2019.
 #[derive(Gain)]
 pub struct Gs<B: Backend> {
-    data: Vec<DataArray>,
+    data: Vec<GainData>,
     built: bool,
     foci: Vec<Vector3>,
     amps: Vec<f64>,

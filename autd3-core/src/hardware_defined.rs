@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 14/10/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -34,8 +34,6 @@ pub const POINT_SEQ_BUFFER_SIZE_MAX: usize = 65536;
 pub const GAIN_SEQ_BUFFER_SIZE_MAX: usize = 2048;
 pub const SEQ_BASE_FREQ: usize = 40000;
 pub const SEQ_SAMPLING_FREQ_DIV_MAX: usize = 65536;
-
-pub type DataArray = [u16; NUM_TRANS_IN_UNIT];
 
 bitflags! {
     pub struct FPGAControlFlags : u8 {
@@ -82,6 +80,28 @@ pub struct GlobalHeader {
     pub cpu_flag: CPUControlFlags,
     pub mod_size: u8,
     pub mod_data: [u8; MOD_FRAME_SIZE],
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct DelayOffset {
+    pub delay: u8,
+    pub offset: u8,
+}
+
+impl DelayOffset {
+    pub fn new() -> Self {
+        Self {
+            delay: 0x00,
+            offset: 0x01,
+        }
+    }
+}
+
+impl Default for DelayOffset {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[repr(C)]

@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 14/10/2021
+ * Last Modified: 24/11/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -41,18 +41,6 @@ fn impl_modulation_macro(ast: &syn::DeriveInput) -> TokenStream {
             fn buffer(&self) -> &[u8] {
                 &self.buffer
             }
-            fn remaining(&self) -> usize {
-                self.buffer().len() - self.sent()
-            }
-            fn head(&self) -> *const u8 {
-                unsafe { self.buffer().as_ptr().add(self.sent()) }
-            }
-            fn sent(&self) -> usize {
-                self.sent
-            }
-            fn send(&mut self, sent: usize){
-                self.sent += sent;
-            }
             fn sampling_frequency_division(&mut self) -> &mut usize {
                 &mut self.sampling_freq_div
             }
@@ -78,7 +66,7 @@ fn impl_gain_macro(ast: &syn::DeriveInput) -> TokenStream {
         impl #impl_generics Gain for #name #ty_generics #where_clause {
             fn build(&mut self, geometry: &Geometry) -> Result<()>{
                 if self.built {return Ok(())}
-                let buf: DataArray = unsafe { std::mem::zeroed() };
+                let buf: GainData = unsafe { std::mem::zeroed() };
                 self.data = vec![buf; geometry.num_devices()];
                 self.calc(geometry)?;
                 self.built = true;
@@ -90,11 +78,11 @@ fn impl_gain_macro(ast: &syn::DeriveInput) -> TokenStream {
                 self.build(geometry)
             }
 
-            fn data(&self) -> &[DataArray]{
+            fn data(&self) -> &[GainData]{
                 &self.data
             }
 
-            fn take(self) -> Vec<DataArray>{
+            fn take(self) -> Vec<GainData>{
                 self.data
             }
 
@@ -135,18 +123,6 @@ fn impl_sequence_macro(ast: &syn::DeriveInput) -> TokenStream {
 
             fn sampling_freq_div(&mut self) -> &mut usize {
                 &mut self.sample_freq_div
-            }
-
-            fn sent(&self) -> usize {
-                self.sent
-            }
-
-            fn send(&mut self, sent: usize) {
-                self.sent += sent
-            }
-
-            fn finished(&self) -> bool {
-                self.remaining() == 0
             }
         }
     };
