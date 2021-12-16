@@ -4,7 +4,7 @@
  * Created Date: 30/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/11/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -12,10 +12,7 @@
  */
 
 use anyhow::Result;
-use autd3_core::{
-    gain::{Gain, GainData},
-    geometry::Geometry,
-};
+use autd3_core::{gain::Gain, geometry::Geometry, hardware_defined::Drive};
 use autd3_traits::Gain;
 use std::collections::HashMap;
 
@@ -23,7 +20,7 @@ use crate::error::AutdError;
 
 #[derive(Gain)]
 pub struct Grouped {
-    data: Vec<GainData>,
+    data: Vec<Drive>,
     built: bool,
     gain_map: HashMap<usize, Box<dyn Gain>>,
 }

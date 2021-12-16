@@ -4,7 +4,7 @@
  * Created Date: 05/06/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/11/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -28,6 +28,7 @@ pub struct SinePressure {
     offset: f64,
     sampling_freq_div: usize,
     built: bool,
+    sent: usize,
 }
 
 impl SinePressure {
@@ -58,6 +59,7 @@ impl SinePressure {
             offset,
             sampling_freq_div: 10,
             built: false,
+            sent: 0,
         }
     }
 

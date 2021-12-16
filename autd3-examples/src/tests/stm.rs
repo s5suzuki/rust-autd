@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 29/05/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -19,7 +19,7 @@ pub async fn stm<L: Link>(mut autd: Controller<L>) -> Result<Controller<L>> {
     autd.silent_mode = false;
 
     let mut m = Static::new();
-    autd.send_modulation(&mut m).await?;
+    autd.send_header(&mut m).await?;
 
     let mut stm = autd.stm();
 

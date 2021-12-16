@@ -15,6 +15,7 @@ use crate::{
     hardware_defined::{CPUControlFlags, DelayOffset, NUM_TRANS_IN_UNIT},
     interface::IDatagramBody,
 };
+use anyhow::Result;
 
 pub struct DelayOffsets {
     data: Vec<DelayOffset>,
@@ -35,18 +36,19 @@ impl IDatagramBody for DelayOffsets {
         &mut self,
         geometry: &crate::geometry::Geometry,
         tx: &mut crate::hardware_defined::TxDatagram,
-    ) {
-        let header = tx.header();
+    ) -> Result<()> {
+        let header = tx.header_mut();
         header.cpu_flag |= CPUControlFlags::DELAY_OFFSET;
         header.cpu_flag |= CPUControlFlags::WRITE_BODY;
         for (dst, &src) in tx
-            .body_data::<DelayOffset>()
+            .body_data_mut::<DelayOffset>()
             .iter_mut()
             .zip(self.data.iter())
         {
             *dst = src;
         }
         tx.set_num_bodies(geometry.num_devices());
+        Ok(())
     }
 
     fn is_finished(&self) -> bool {

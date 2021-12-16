@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/11/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -15,15 +15,16 @@ use std::f64::consts::PI;
 
 use anyhow::Result;
 use autd3_core::{
-    gain::{Gain, GainData},
+    gain::Gain,
     geometry::{Geometry, Matrix4x4, Vector3, Vector4},
+    hardware_defined::Drive,
 };
 use autd3_traits::Gain;
 
 /// Gain to produce Bessel Beam
 #[derive(Gain)]
 pub struct Bessel {
-    data: Vec<GainData>,
+    data: Vec<Drive>,
     built: bool,
     duty: u8,
     pos: Vector3,
@@ -74,17 +75,14 @@ impl Bessel {
 
         let duty = self.duty;
         let wavenum = 2.0 * PI / geometry.wavelength;
-        for (dev, data) in geometry.devices().zip(self.data.iter_mut()) {
-            for (trans, d) in dev.transducers().zip(data.iter_mut()) {
-                let r = trans - self.pos;
-                let r = Vector4::new(r.x, r.y, r.z, 1.0);
-                let r = rot * r;
-                let dist =
-                    self.theta.sin() * (r.x * r.x + r.y * r.y).sqrt() - self.theta.cos() * r.z;
-                let phase = wavenum * dist;
-                d.duty = duty;
-                d.phase = autd3_core::utils::to_phase(phase);
-            }
+        for (trans, data) in geometry.transducers().zip(self.data.iter_mut()) {
+            let r = trans.position() - self.pos;
+            let r = Vector4::new(r.x, r.y, r.z, 1.0);
+            let r = rot * r;
+            let dist = self.theta.sin() * (r.x * r.x + r.y * r.y).sqrt() - self.theta.cos() * r.z;
+            let phase = wavenum * dist;
+            data.duty = duty;
+            data.phase = autd3_core::utils::to_phase(phase);
         }
         Ok(())
     }

@@ -59,6 +59,7 @@ bitflags! {
         const READS_FPGA_INFO = 1 << 4;
         const DELAY_OFFSET = 1 << 5;
         const WRITE_BODY = 1 << 6;
+        const WAIT_ON_SYNC = 1 << 7;
     }
 }
 
@@ -128,6 +129,10 @@ impl FPGAInfo {
     pub fn is_fan_running(&self) -> bool {
         (self.info & 0x01) != 0
     }
+
+    pub fn copy_from(&mut self, rx: &RxMessage) {
+        self.info = rx.ack;
+    }
 }
 
 impl Default for FPGAInfo {
@@ -136,11 +141,12 @@ impl Default for FPGAInfo {
     }
 }
 
+#[derive(Clone)]
 pub struct TxDatagram {
     data: Vec<u8>,
     header_size: usize,
-    body_size: usize,
     num_bodies: usize,
+    body_size: usize,
 }
 
 impl TxDatagram {
@@ -149,14 +155,26 @@ impl TxDatagram {
         let body_size = std::mem::size_of::<Drive>() * NUM_TRANS_IN_UNIT;
         let num_bodies = device_num;
         Self {
-            data: vec![0x00; header_size * num_bodies * body_size],
+            data: vec![0x00; header_size + num_bodies * body_size],
             header_size,
-            body_size,
             num_bodies,
+            body_size,
         }
     }
 
-    pub fn header(&mut self) -> &mut GlobalHeader {
+    pub fn data(&self) -> &[u8] {
+        &self.data[0..(self.header_size + self.num_bodies * self.body_size)]
+    }
+
+    pub fn data_mut(&mut self) -> &mut [u8] {
+        &mut self.data[0..(self.header_size + self.num_bodies * self.body_size)]
+    }
+
+    pub fn header(&self) -> &GlobalHeader {
+        unsafe { (self.data.as_ptr() as *mut GlobalHeader).as_mut().unwrap() }
+    }
+
+    pub fn header_mut(&mut self) -> &mut GlobalHeader {
         unsafe {
             (self.data.as_mut_ptr() as *mut GlobalHeader)
                 .as_mut()
@@ -164,21 +182,45 @@ impl TxDatagram {
         }
     }
 
-    pub fn body(&mut self) -> *mut u8 {
-        unsafe { self.data.as_mut_ptr().add(self.header_size) }
-    }
-
-    pub fn body_data<T>(&mut self) -> &mut [T] {
+    pub fn body_data<T>(&self) -> &[T] {
         unsafe {
-            std::slice::from_raw_parts_mut(
-                self.data.as_mut_ptr() as *mut T,
-                self.data.len() / size_of::<T>(),
+            std::slice::from_raw_parts(
+                self.data[self.header_size..].as_ptr() as *mut T,
+                self.data[self.header_size..].len() / size_of::<T>(),
             )
         }
     }
 
-    pub(crate) fn set_num_bodies(&mut self, num_bodies: usize) {
+    pub fn body_data_mut<T>(&mut self) -> &mut [T] {
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                self.data[self.header_size..].as_mut_ptr() as *mut T,
+                self.data[self.header_size..].len() / size_of::<T>(),
+            )
+        }
+    }
+
+    pub fn body_data_mut_offset<T>(&mut self, offset: usize) -> &mut [T] {
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                self.data[(self.header_size + offset)..].as_mut_ptr() as *mut T,
+                self.data[(self.header_size + offset)..].len() / size_of::<T>(),
+            )
+        }
+    }
+
+    pub fn num_bodies(&self) -> usize {
+        self.num_bodies
+    }
+
+    pub fn set_num_bodies(&mut self, num_bodies: usize) {
         self.num_bodies = num_bodies;
+    }
+
+    pub fn copy_from(&mut self, other: &TxDatagram) {
+        self.header_size = other.header_size;
+        self.num_bodies = other.num_bodies();
+        self.data.copy_from_slice(&other.data);
     }
 }
 
@@ -187,11 +229,24 @@ pub struct RxDatagram {
 }
 
 impl RxDatagram {
-    pub fn messages(&self) -> impl Iterator<Item = &RxMessage> {
-        self.data.iter()
+    pub fn new(num_devices: usize) -> Self {
+        Self {
+            data: vec![RxMessage { msg_id: 0, ack: 0 }; num_devices],
+        }
+    }
+
+    pub fn messages(&self) -> &[RxMessage] {
+        &self.data
+    }
+    pub fn messages_mut(&mut self) -> &mut [RxMessage] {
+        &mut self.data
+    }
+
+    pub fn copy_from(&mut self, other: &[RxMessage]) {
+        self.data.copy_from_slice(other);
     }
 }
 
 pub fn is_msg_processed(msg_id: u8, rx: &RxDatagram) -> bool {
-    rx.messages().all(|msg| msg.msg_id == msg_id)
+    rx.messages().iter().all(|msg| msg.msg_id == msg_id)
 }

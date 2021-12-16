@@ -16,5 +16,5 @@ exclude = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-autd3-core = {path="../autd3-core", version="1.9.3"}
+autd3-core = {path="../autd3-core", version="1.10.0"}
 anyhow = "1.0.40"

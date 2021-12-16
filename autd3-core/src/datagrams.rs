@@ -15,6 +15,7 @@ use crate::{
     hardware_defined::FPGAControlFlags,
     interface::{IDatagramBody, IDatagramHeader},
 };
+use anyhow::Result;
 
 pub struct CommonHeader {
     fpga_mask: FPGAControlFlags,
@@ -27,7 +28,9 @@ impl CommonHeader {
 }
 
 impl IDatagramHeader for CommonHeader {
-    fn init(&mut self) {}
+    fn init(&mut self) -> Result<()> {
+        Ok(())
+    }
 
     fn pack(
         &mut self,
@@ -36,7 +39,7 @@ impl IDatagramHeader for CommonHeader {
         _fpga_flag: FPGAControlFlags,
         cpu_flag: crate::hardware_defined::CPUControlFlags,
     ) {
-        let mut header = tx.header();
+        let mut header = tx.header_mut();
         header.msg_id = msg_id;
         header.fpga_flag =
             (header.fpga_flag & !self.fpga_mask) | (header.fpga_flag & self.fpga_mask);
@@ -62,7 +65,9 @@ impl SpecialMessageIdHeader {
 }
 
 impl IDatagramHeader for SpecialMessageIdHeader {
-    fn init(&mut self) {}
+    fn init(&mut self) -> Result<()> {
+        Ok(())
+    }
 
     fn pack(
         &mut self,
@@ -71,7 +76,7 @@ impl IDatagramHeader for SpecialMessageIdHeader {
         _fpga_flag: FPGAControlFlags,
         cpu_flag: crate::hardware_defined::CPUControlFlags,
     ) {
-        let mut header = tx.header();
+        let mut header = tx.header_mut();
         header.msg_id = self.msg_id;
         header.fpga_flag =
             (header.fpga_flag & !self.fpga_mask) | (header.fpga_flag & self.fpga_mask);
@@ -100,8 +105,9 @@ impl IDatagramBody for NullBody {
         &mut self,
         _geometry: &crate::geometry::Geometry,
         tx: &mut crate::hardware_defined::TxDatagram,
-    ) {
+    ) -> Result<()> {
         tx.set_num_bodies(0);
+        Ok(())
     }
 
     fn is_finished(&self) -> bool {

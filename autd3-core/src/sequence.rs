@@ -11,12 +11,15 @@
  *
  */
 
+use std::mem::size_of;
+
 use crate::{
     error::AutdError,
     gain::Gain,
     geometry::{Geometry, Vector3},
     hardware_defined::{
-        self, Drive, GAIN_SEQ_BUFFER_SIZE_MAX, POINT_SEQ_BUFFER_SIZE_MAX, SEQ_BASE_FREQ,
+        self, CPUControlFlags, Drive, FPGAControlFlags, GAIN_SEQ_BUFFER_SIZE_MAX,
+        NUM_TRANS_IN_UNIT, POINT_SEQ_BUFFER_SIZE_MAX, SEQ_BASE_FREQ,
     },
     interface::IDatagramBody,
 };
@@ -54,6 +57,7 @@ pub struct PointSequence {
     control_points: Vec<(Vector3, u8)>,
     sample_freq_div: usize,
     wait_on_sync: bool,
+    sent: usize,
 }
 
 impl PointSequence {
@@ -66,6 +70,7 @@ impl PointSequence {
             control_points,
             sample_freq_div: 1,
             wait_on_sync: false,
+            sent: 0,
         }
     }
 
@@ -97,6 +102,74 @@ impl PointSequence {
 impl Default for PointSequence {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl IDatagramBody for PointSequence {
+    fn init(&mut self) {
+        self.sent = 0;
+    }
+
+    fn pack(&mut self, geometry: &Geometry, tx: &mut hardware_defined::TxDatagram) -> Result<()> {
+        let header = tx.header_mut();
+
+        if self.wait_on_sync {
+            header.cpu_flag |= CPUControlFlags::WAIT_ON_SYNC;
+        }
+        header.fpga_flag |= FPGAControlFlags::OUTPUT_ENABLE;
+        header.fpga_flag |= FPGAControlFlags::SEQ_MODE;
+        header.fpga_flag &= !FPGAControlFlags::SEQ_GAIN_MODE;
+
+        if self.is_finished() {
+            return Ok(());
+        }
+
+        tx.set_num_bodies(geometry.num_devices());
+        let header = tx.header_mut();
+
+        let mut offset = 1;
+        header.cpu_flag |= CPUControlFlags::WRITE_BODY;
+        if self.sent == 0 {
+            header.cpu_flag |= CPUControlFlags::SEQ_BEGIN;
+            for d in tx.body_data_mut::<[u16; NUM_TRANS_IN_UNIT]>() {
+                d[1] = (self.sample_freq_div - 1) as _;
+                d[2] = (geometry.wavelength * 1000.0).round() as _;
+            }
+            offset += 4;
+        }
+        let send_size = (self.control_points.len() - self.sent).clamp(
+            0,
+            (NUM_TRANS_IN_UNIT - offset) * std::mem::size_of::<u16>()
+                / std::mem::size_of::<SeqFocus>(),
+        );
+        if self.sent + send_size == self.control_points.len() {
+            tx.header_mut().cpu_flag |= CPUControlFlags::SEQ_END;
+        }
+        for d in tx.body_data_mut::<[u16; NUM_TRANS_IN_UNIT]>() {
+            d[0] = send_size as _;
+        }
+        let fixed_num_unit = 256.0 / geometry.wavelength;
+        for device in geometry.devices() {
+            dbg!(tx
+                .body_data_mut_offset::<SeqFocus>(offset * size_of::<u16>())
+                .len());
+            dbg!(send_size);
+            for (f, c) in tx
+                .body_data_mut_offset::<SeqFocus>(offset * size_of::<u16>())
+                .iter_mut()
+                .zip(self.control_points[self.sent..].iter().take(send_size))
+            {
+                let v = device.local_position(c.0) * fixed_num_unit;
+                f.set(v[0] as _, v[1] as _, v[2] as _, c.1);
+            }
+        }
+        self.sent += send_size;
+
+        Ok(())
+    }
+
+    fn is_finished(&self) -> bool {
+        self.sent == self.control_points.len()
     }
 }
 
@@ -150,109 +223,140 @@ impl GainSequence {
     }
 }
 
+#[repr(C)]
+struct PhaseDrive {
+    pub phase0: u8,
+    pub phase1: u8,
+}
+
+#[repr(C)]
+struct HalfPhaseDrive {
+    phase01: u8,
+    phase23: u8,
+}
+
+impl HalfPhaseDrive {
+    pub fn set(&mut self, phase0: u8, phase1: u8, phase2: u8, phase3: u8) {
+        self.phase01 = (phase1 & 0xF0) | ((phase0 >> 4) & 0x0F);
+        self.phase23 = (phase3 & 0xF0) | ((phase2 >> 4) & 0x0F);
+    }
+}
+
 impl IDatagramBody for GainSequence {
     fn init(&mut self) {
         self.sent = 0;
     }
 
-    fn pack(&mut self, geometry: &Geometry, tx: &mut hardware_defined::TxDatagram) {
-        if *seq_sent == seq.gains().len() + 1 {
-            return std::mem::size_of::<GlobalHeader>();
+    fn pack(&mut self, geometry: &Geometry, tx: &mut hardware_defined::TxDatagram) -> Result<()> {
+        let header = tx.header_mut();
+
+        if self.wait_on_sync {
+            header.cpu_flag |= CPUControlFlags::WAIT_ON_SYNC;
+        }
+        header.fpga_flag |= FPGAControlFlags::OUTPUT_ENABLE;
+        header.fpga_flag |= FPGAControlFlags::SEQ_MODE;
+        header.fpga_flag |= FPGAControlFlags::SEQ_GAIN_MODE;
+
+        if self.is_finished() {
+            return Ok(());
         }
 
-        let num_devices = geometry.num_devices();
+        tx.set_num_bodies(geometry.num_devices());
 
-        let size = std::mem::size_of::<GlobalHeader>()
-            + std::mem::size_of::<u16>() * NUM_TRANS_IN_UNIT * num_devices;
+        let header = tx.header_mut();
+        header.cpu_flag |= CPUControlFlags::WRITE_BODY;
 
-        let header = data.as_mut_ptr() as *mut GlobalHeader;
-        let sent = *seq.gain_mode() as usize;
-        unsafe {
-            (*header).cpu_flag |= CPUControlFlags::WRITE_BODY;
-
-            if *seq_sent == 0 {
-                let cursor = data.as_mut_ptr().add(std::mem::size_of::<GlobalHeader>()) as *mut u16;
-                (*header).cpu_flag |= CPUControlFlags::SEQ_BEGIN;
-                for i in 0..num_devices {
-                    cursor.add(i * NUM_TRANS_IN_UNIT).write(sent as _);
-                    cursor
-                        .add(i * NUM_TRANS_IN_UNIT + 1)
-                        .write((*seq.sampling_freq_div() - 1) as u16);
-                    cursor
-                        .add(i * NUM_TRANS_IN_UNIT + 2)
-                        .write(seq.gains().len() as _);
-                }
-                *seq_sent += 1;
-                return size;
+        let sent = self.gain_mode as usize;
+        if self.sent == 0 {
+            header.cpu_flag |= CPUControlFlags::SEQ_BEGIN;
+            for d in tx.body_data_mut::<[u16; NUM_TRANS_IN_UNIT]>() {
+                d[0] = sent as _;
+                d[1] = (self.sample_freq_div - 1) as _;
+                d[2] = self.gains.len() as _;
             }
-
-            if *seq_sent + sent > seq.gains().len() {
-                (*header).cpu_flag |= CPUControlFlags::SEQ_END;
-                (*header).fpga_flag |= FPGAControlFlags::OUTPUT_ENABLE;
-            }
-
-            let mut cursor = data.as_mut_ptr().add(std::mem::size_of::<GlobalHeader>()) as *mut u16;
-            let gain_idx = *seq_sent - 1;
-            match *seq.gain_mode() {
-                crate::hardware_defined::GainMode::DutyPhaseFull => {
-                    for device in 0..num_devices {
-                        std::ptr::copy_nonoverlapping(
-                            seq.gains()[gain_idx][device].as_ptr() as _,
-                            cursor,
-                            NUM_TRANS_IN_UNIT,
-                        );
-                        cursor = cursor.add(NUM_TRANS_IN_UNIT);
-                    }
-                }
-                crate::hardware_defined::GainMode::PhaseFull => {
-                    for device in 0..num_devices {
-                        for i in 0..NUM_TRANS_IN_UNIT {
-                            let low = seq.gains()[gain_idx][device][i].phase;
-                            let high = if gain_idx + 1 >= seq.gains().len() {
-                                0x00
-                            } else {
-                                seq.gains()[gain_idx + 1][device][i].phase
-                            };
-                            cursor.add(i).write(utils::pack_to_u16(high, low));
-                        }
-                        cursor = cursor.add(NUM_TRANS_IN_UNIT);
-                    }
-                }
-                crate::hardware_defined::GainMode::PhaseHalf => {
-                    for device in 0..num_devices {
-                        for i in 0..NUM_TRANS_IN_UNIT {
-                            let phase1 = seq.gains()[gain_idx][device][i].phase >> 4 & 0x0F;
-                            let phase2 = if gain_idx + 1 >= seq.gains().len() {
-                                0x00
-                            } else {
-                                seq.gains()[gain_idx + 1][device][i].phase & 0xF0
-                            };
-                            let phase3 = if gain_idx + 2 >= seq.gains().len() {
-                                0x00
-                            } else {
-                                seq.gains()[gain_idx + 2][device][i].phase >> 4 & 0x0F
-                            };
-                            let phase4 = if gain_idx + 3 >= seq.gains().len() {
-                                0x00
-                            } else {
-                                seq.gains()[gain_idx + 3][device][i].phase & 0xF0
-                            };
-                            cursor
-                                .add(i)
-                                .write(utils::pack_to_u16(phase4 | phase3, phase2 | phase1));
-                        }
-                        cursor = cursor.add(NUM_TRANS_IN_UNIT);
-                    }
-                }
-            }
-            *seq_sent += sent;
+            self.sent += 1;
+            return Ok(());
         }
 
-        size
+        if self.sent + sent > self.gains.len() {
+            header.cpu_flag |= CPUControlFlags::SEQ_END;
+        }
+
+        let gain_idx = self.sent - 1;
+        match self.gain_mode {
+            GainMode::DutyPhaseFull => tx
+                .body_data_mut::<Drive>()
+                .copy_from_slice(&self.gains[gain_idx]),
+            GainMode::PhaseFull => {
+                let zeros = if gain_idx + 1 > self.gains.len() {
+                    vec![
+                        Drive {
+                            phase: 0x00,
+                            duty: 0x00,
+                        };
+                        self.gains[gain_idx].len()
+                    ]
+                } else {
+                    vec![]
+                };
+                for ((dst, src0), src1) in tx
+                    .body_data_mut::<PhaseDrive>()
+                    .iter_mut()
+                    .zip(self.gains[gain_idx].iter())
+                    .zip(if gain_idx + 1 > self.gains.len() {
+                        zeros.iter()
+                    } else {
+                        self.gains[gain_idx + 1].iter()
+                    })
+                {
+                    dst.phase0 = src0.phase;
+                    dst.phase1 = src1.phase;
+                }
+            }
+            GainMode::PhaseHalf => {
+                let zeros = if gain_idx + 1 > self.gains.len() {
+                    vec![
+                        Drive {
+                            phase: 0x00,
+                            duty: 0x00,
+                        };
+                        self.gains[gain_idx].len()
+                    ]
+                } else {
+                    vec![]
+                };
+                for ((((dst, src0), src1), src2), src3) in tx
+                    .body_data_mut::<HalfPhaseDrive>()
+                    .iter_mut()
+                    .zip(self.gains[gain_idx].iter())
+                    .zip(if gain_idx + 1 > self.gains.len() {
+                        zeros.iter()
+                    } else {
+                        self.gains[gain_idx + 1].iter()
+                    })
+                    .zip(if gain_idx + 2 > self.gains.len() {
+                        zeros.iter()
+                    } else {
+                        self.gains[gain_idx + 2].iter()
+                    })
+                    .zip(if gain_idx + 3 > self.gains.len() {
+                        zeros.iter()
+                    } else {
+                        self.gains[gain_idx + 3].iter()
+                    })
+                {
+                    dst.set(src0.phase, src1.phase, src2.phase, src3.phase);
+                }
+            }
+        }
+
+        self.sent += sent;
+
+        Ok(())
     }
 
     fn is_finished(&self) -> bool {
-        todo!()
+        self.sent == self.gains.len() + 1
     }
 }
 
