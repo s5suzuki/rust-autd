@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 03/10/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -26,7 +26,7 @@ pub async fn bessel<L: Link>(mut autd: Controller<L>) -> Result<Controller<L>> {
     let mut g = Bessel::new(center, Vector3::z(), 18. / 180. * std::f64::consts::PI);
     let mut m = Sine::new(150);
 
-    autd.send(&mut g, &mut m).await?;
+    autd.send(&mut m, &mut g).await?;
 
     Ok(autd)
 }

@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/11/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -14,7 +14,10 @@
 use anyhow::Result;
 use libc::c_void;
 
-use autd3_core::link::Link;
+use autd3_core::{
+    hardware_defined::{RxDatagram, TxDatagram},
+    link::Link,
+};
 
 use crate::{error::AdsError, native_methods::*};
 
@@ -77,15 +80,15 @@ impl Link for TwinCatLink {
         Ok(())
     }
 
-    fn send(&mut self, data: &[u8]) -> Result<bool> {
+    fn send(&mut self, tx: &TxDatagram) -> Result<bool> {
         unsafe {
             let n_err = (TC_ADS.tc_ads_sync_write_req)(
                 self.port,
                 &self.send_addr as *const _,
                 INDEX_GROUP,
                 INDEX_OFFSET_BASE,
-                data.len() as u32,
-                data.as_ptr() as *const c_void,
+                tx.data().len() as u32,
+                tx.data().as_ptr() as *const c_void,
             );
 
             if n_err > 0 {
@@ -96,7 +99,7 @@ impl Link for TwinCatLink {
         }
     }
 
-    fn receive(&mut self, data: &mut [u8]) -> Result<bool> {
+    fn receive(&mut self, rx: &mut RxDatagram) -> Result<bool> {
         let mut read_bytes: u32 = 0;
         unsafe {
             let n_err = (TC_ADS.tc_ads_sync_read_req)(
@@ -104,8 +107,8 @@ impl Link for TwinCatLink {
                 &self.send_addr as *const _,
                 INDEX_GROUP,
                 INDEX_OFFSET_BASE_READ,
-                data.len() as u32,
-                data.as_mut_ptr() as *mut c_void,
+                rx.messages().len() as u32,
+                rx.messages_mut().as_mut_ptr() as *mut c_void,
                 &mut read_bytes as *mut u32,
             );
 

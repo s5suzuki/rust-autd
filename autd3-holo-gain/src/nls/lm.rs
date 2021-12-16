@@ -4,7 +4,7 @@
  * Created Date: 29/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/11/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -17,9 +17,9 @@ use crate::{
 };
 use anyhow::Result;
 use autd3_core::{
-    gain::{Gain, GainData},
+    gain::Gain,
     geometry::{Geometry, Vector3},
-    hardware_defined::NUM_TRANS_IN_UNIT,
+    hardware_defined::{Drive, NUM_TRANS_IN_UNIT},
 };
 use autd3_traits::Gain;
 use nalgebra::ComplexField;
@@ -31,7 +31,7 @@ use std::marker::PhantomData;
 /// * K.Madsen, H.Nielsen, and O.Tingleff, “Methods for non-linear least squares problems (2nd ed.),” 2004.
 #[derive(Gain)]
 pub struct Lm<B: Backend> {
-    data: Vec<GainData>,
+    data: Vec<Drive>,
     built: bool,
     foci: Vec<Vector3>,
     amps: Vec<f64>,
@@ -216,17 +216,10 @@ impl<B: Backend> Lm<B> {
             }
         }
 
-        let mut dev_idx = 0;
-        let mut trans_idx = 0;
         for j in 0..n {
             let duty = 0xFF;
-            self.data[dev_idx][trans_idx].duty = duty;
-            self.data[dev_idx][trans_idx].phase = autd3_core::utils::to_phase(x[j]);
-            trans_idx += 1;
-            if trans_idx == NUM_TRANS_IN_UNIT {
-                dev_idx += 1;
-                trans_idx = 0;
-            }
+            self.data[j].duty = duty;
+            self.data[j].phase = autd3_core::utils::to_phase(x[j]);
         }
         Ok(())
     }

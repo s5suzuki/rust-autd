@@ -15,9 +15,10 @@ use crate::{
     geometry::Geometry,
     hardware_defined::{CPUControlFlags, FPGAControlFlags, TxDatagram},
 };
+use anyhow::Result;
 
 pub trait IDatagramHeader {
-    fn init(&mut self);
+    fn init(&mut self) -> Result<()>;
     fn pack(
         &mut self,
         msg_id: u8,
@@ -29,7 +30,7 @@ pub trait IDatagramHeader {
 }
 
 pub trait IDatagramBody {
-    fn init(&mut self); 
-    fn pack(&mut self, geometry: &Geometry, tx: &mut TxDatagram);
+    fn init(&mut self);
+    fn pack(&mut self, geometry: &Geometry, tx: &mut TxDatagram) -> Result<()>;
     fn is_finished(&self) -> bool;
 }

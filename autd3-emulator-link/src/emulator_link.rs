@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/11/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -18,8 +18,9 @@ use anyhow::Result;
 use autd3_core::{
     geometry::Geometry,
     hardware_defined::{
-        FPGAControlFlags, GlobalHeader, MSG_EMU_GEOMETRY_SET, MSG_RD_CPU_V_LSB, MSG_RD_CPU_V_MSB,
-        MSG_RD_FPGA_V_LSB, MSG_RD_FPGA_V_MSB,
+        CPUControlFlags, FPGAControlFlags, RxDatagram, TxDatagram, MSG_EMU_GEOMETRY_SET,
+        MSG_RD_CPU_V_LSB, MSG_RD_CPU_V_MSB, MSG_RD_FPGA_V_LSB, MSG_RD_FPGA_V_MSB,
+        NUM_TRANS_IN_UNIT,
     },
     link::Link,
 };
@@ -27,39 +28,35 @@ use autd3_core::{
 pub struct EmulatorLink {
     port: u16,
     socket: Option<UdpSocket>,
-    geometry_buf: Vec<u8>,
+    geometry_buf: TxDatagram,
     last_msg_id: u8,
 }
 
 impl EmulatorLink {
     pub fn new(port: u16, geometry: &Geometry) -> Self {
-        let vec_size = 9 * size_of::<f32>();
-        let size = size_of::<GlobalHeader>() + geometry.num_devices() * vec_size;
-        let mut geometry_buf = vec![0; size];
+        let mut geometry_buf = TxDatagram::new(geometry.num_devices());
+        let header = geometry_buf.header_mut();
+        header.msg_id = MSG_EMU_GEOMETRY_SET;
+        header.cpu_flag = CPUControlFlags::NONE;
+        header.fpga_flag = FPGAControlFlags::NONE;
+        header.mod_size = 0x00;
 
-        unsafe {
-            let uh = geometry_buf.as_mut_ptr() as *mut GlobalHeader;
-            (*uh).msg_id = MSG_EMU_GEOMETRY_SET;
-            (*uh).fpga_flag = FPGAControlFlags::NONE;
-            (*uh).mod_size = 0x00;
-
-            let mut cursor = geometry_buf.as_mut_ptr().add(size_of::<GlobalHeader>()) as *mut f32;
-            for device in geometry.devices() {
-                let origin = device.transducers().next().unwrap();
-                let right = device.x_direction();
-                let up = device.y_direction();
-
-                cursor.write(origin.x as f32);
-                cursor.add(1).write(origin.y as f32);
-                cursor.add(2).write(origin.z as f32);
-                cursor.add(3).write(right.x as f32);
-                cursor.add(4).write(right.y as f32);
-                cursor.add(5).write(right.z as f32);
-                cursor.add(6).write(up.x as f32);
-                cursor.add(7).write(up.y as f32);
-                cursor.add(8).write(up.z as f32);
-                cursor = cursor.add(9);
-            }
+        for (device, buf) in geometry.devices().iter().zip(
+            geometry_buf
+                .body_data_mut::<[f32; NUM_TRANS_IN_UNIT * size_of::<u16>() / size_of::<f64>()]>(),
+        ) {
+            let origin = device.transducers()[0].position();
+            let right = device.transducers()[0].x_direction();
+            let up = device.transducers()[0].y_direction();
+            buf[0] = origin.x as _;
+            buf[1] = origin.y as _;
+            buf[2] = origin.z as _;
+            buf[3] = right.x as _;
+            buf[4] = right.y as _;
+            buf[5] = right.z as _;
+            buf[6] = up.x as _;
+            buf[7] = up.y as _;
+            buf[8] = up.z as _;
         }
 
         Self {
@@ -76,7 +73,7 @@ impl Link for EmulatorLink {
         let socket = UdpSocket::bind("0.0.0.0:8080")?;
         let remote_addr = format!("127.0.0.1:{}", self.port);
         socket.connect(remote_addr)?;
-        socket.send(&self.geometry_buf)?;
+        socket.send(self.geometry_buf.data())?;
         self.socket = Some(socket);
         Ok(())
     }
@@ -86,25 +83,22 @@ impl Link for EmulatorLink {
         Ok(())
     }
 
-    fn send(&mut self, data: &[u8]) -> Result<bool> {
+    fn send(&mut self, tx: &TxDatagram) -> Result<bool> {
         if let Some(socket) = &self.socket {
-            socket.try_clone()?.send(data)?;
-            unsafe {
-                let uh = data.as_ptr() as *mut GlobalHeader;
-                self.last_msg_id = (*uh).msg_id;
-            }
+            socket.try_clone()?.send(tx.data())?;
+            self.last_msg_id = tx.header().msg_id;
         }
         Ok(true)
     }
 
-    fn receive(&mut self, data: &mut [u8]) -> Result<bool> {
-        for i in 0..(data.len() / 2) {
-            data[i * 2 + 1] = self.last_msg_id;
+    fn receive(&mut self, rx: &mut RxDatagram) -> Result<bool> {
+        for r in rx.messages_mut() {
+            r.msg_id = self.last_msg_id;
         }
 
         let mut set = |value: u8| {
-            for i in 0..(data.len() / 2) {
-                data[i * 2] = value;
+            for r in rx.messages_mut() {
+                r.ack = value;
             }
         };
 

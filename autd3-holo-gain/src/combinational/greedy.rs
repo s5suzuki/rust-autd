@@ -4,7 +4,7 @@
  * Created Date: 03/06/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/11/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -16,8 +16,9 @@ use std::f64::consts::PI;
 use crate::{macros::propagate, Complex};
 use anyhow::Result;
 use autd3_core::{
-    gain::{Gain, GainData},
+    gain::Gain,
     geometry::{Geometry, Vector3},
+    hardware_defined::Drive,
 };
 use autd3_traits::Gain;
 use nalgebra::ComplexField;
@@ -26,7 +27,7 @@ use nalgebra::ComplexField;
 /// * Shun Suzuki, Masahiro Fujiwara, Yasutoshi Makino, and Hiroyuki Shinoda, “Radiation Pressure Field Reconstruction for Ultrasound Midair Haptics by Greedy Algorithm with Brute-Force Search,” in IEEE Transactions on Haptics, doi: 10.1109/TOH.2021.3076489
 #[derive(Gain)]
 pub struct Greedy {
-    data: Vec<GainData>,
+    data: Vec<Drive>,
     built: bool,
     foci: Vec<Vector3>,
     amps: Vec<f64>,
@@ -68,8 +69,8 @@ impl Greedy {
         cache.resize(m, Complex::new(0., 0.));
 
         fn transfer_foci(
-            trans_pos: Vector3,
-            trans_dir: Vector3,
+            trans_pos: &Vector3,
+            trans_dir: &Vector3,
             phase: Complex,
             wave_num: f64,
             atten: f64,
@@ -81,40 +82,38 @@ impl Greedy {
             }
         }
 
-        for (dev, data) in geometry.devices().zip(self.data.iter_mut()) {
-            let trans_dir = dev.z_direction();
-            for (&trans, d) in dev.transducers().zip(data.iter_mut()) {
-                let mut min_idx = 0;
-                let mut min_v = std::f64::INFINITY;
-                for (idx, &phase) in self.phases.iter().enumerate() {
-                    transfer_foci(
-                        trans,
-                        trans_dir,
-                        phase,
-                        wave_num,
-                        attenuation,
-                        &self.foci,
-                        &mut tmp[idx],
-                    );
-                    let mut v = 0.0;
-                    for (j, c) in cache.iter().enumerate() {
-                        v += (self.amps[j] - (tmp[idx][j] + c).abs()).abs();
-                    }
-
-                    if v < min_v {
-                        min_v = v;
-                        min_idx = idx;
-                    }
+        for (trans, data) in geometry.transducers().zip(self.data.iter_mut()) {
+            let trans_dir = trans.z_direction();
+            let mut min_idx = 0;
+            let mut min_v = std::f64::INFINITY;
+            for (idx, &phase) in self.phases.iter().enumerate() {
+                transfer_foci(
+                    trans.position(),
+                    trans_dir,
+                    phase,
+                    wave_num,
+                    attenuation,
+                    &self.foci,
+                    &mut tmp[idx],
+                );
+                let mut v = 0.0;
+                for (j, c) in cache.iter().enumerate() {
+                    v += (self.amps[j] - (tmp[idx][j] + c).abs()).abs();
                 }
 
-                for (j, c) in cache.iter_mut().enumerate() {
-                    *c += tmp[min_idx][j];
+                if v < min_v {
+                    min_v = v;
+                    min_idx = idx;
                 }
-
-                const DUTY: u8 = 0xFF;
-                d.duty = DUTY;
-                d.phase = autd3_core::utils::to_phase(self.phases[min_idx].argument());
             }
+
+            for (j, c) in cache.iter_mut().enumerate() {
+                *c += tmp[min_idx][j];
+            }
+
+            const DUTY: u8 = 0xFF;
+            data.duty = DUTY;
+            data.phase = autd3_core::utils::to_phase(self.phases[min_idx].argument());
         }
         Ok(())
     }

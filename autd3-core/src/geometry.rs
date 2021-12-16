@@ -56,16 +56,16 @@ impl Transducer {
         &self.pos
     }
 
-    pub fn x_direction(&self) -> Vector3 {
-        self.x_direction
+    pub fn x_direction(&self) -> &Vector3 {
+        &self.x_direction
     }
 
-    pub fn y_direction(&self) -> Vector3 {
-        self.y_direction
+    pub fn y_direction(&self) -> &Vector3 {
+        &self.y_direction
     }
 
-    pub fn z_direction(&self) -> Vector3 {
-        self.z_direction
+    pub fn z_direction(&self) -> &Vector3 {
+        &self.z_direction
     }
 }
 
@@ -124,7 +124,7 @@ impl Device {
         let y_dir = self.global_trans_positions[0].x_direction();
         let z_dir = self.global_trans_positions[0].x_direction();
         let rv = global_position - local_origin;
-        Vector3::new(rv.dot(&x_dir), rv.dot(&y_dir), rv.dot(&z_dir))
+        Vector3::new(rv.dot(x_dir), rv.dot(y_dir), rv.dot(z_dir))
     }
 
     pub fn transducers(&self) -> &[Transducer] {
@@ -193,6 +193,10 @@ impl Geometry {
 
     pub fn num_devices(&self) -> usize {
         self.devices.len()
+    }
+
+    pub fn devices(&self) -> &[Device] {
+        &self.devices
     }
 
     pub fn transducers(&self) -> impl Iterator<Item = &Transducer> {

@@ -24,7 +24,6 @@ pub mod geometry;
 pub mod hardware_defined;
 pub mod interface;
 pub mod link;
-// pub mod logic;
 pub mod modulation;
 pub mod sequence;
 pub mod utils;
