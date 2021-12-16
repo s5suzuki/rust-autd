@@ -121,8 +121,8 @@ impl Device {
     pub fn local_position(&self, global_position: Vector3) -> Vector3 {
         let local_origin = self.global_trans_positions[0].position();
         let x_dir = self.global_trans_positions[0].x_direction();
-        let y_dir = self.global_trans_positions[0].x_direction();
-        let z_dir = self.global_trans_positions[0].x_direction();
+        let y_dir = self.global_trans_positions[0].y_direction();
+        let z_dir = self.global_trans_positions[0].z_direction();
         let rv = global_position - local_origin;
         Vector3::new(rv.dot(x_dir), rv.dot(y_dir), rv.dot(z_dir))
     }

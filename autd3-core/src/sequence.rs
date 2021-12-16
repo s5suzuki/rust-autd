@@ -11,6 +11,8 @@
  *
  */
 
+use std::mem::size_of;
+
 use crate::{
     error::AutdError,
     gain::Gain,
@@ -140,18 +142,20 @@ impl IDatagramBody for PointSequence {
             (NUM_TRANS_IN_UNIT - offset) * std::mem::size_of::<u16>()
                 / std::mem::size_of::<SeqFocus>(),
         );
-        if self.sent + send_size >= self.control_points.len() {
-            let header = tx.header_mut();
-            header.cpu_flag |= CPUControlFlags::SEQ_END;
+        if self.sent + send_size == self.control_points.len() {
+            tx.header_mut().cpu_flag |= CPUControlFlags::SEQ_END;
         }
         for d in tx.body_data_mut::<[u16; NUM_TRANS_IN_UNIT]>() {
             d[0] = send_size as _;
         }
-
         let fixed_num_unit = 256.0 / geometry.wavelength;
         for device in geometry.devices() {
+            dbg!(tx
+                .body_data_mut_offset::<SeqFocus>(offset * size_of::<u16>())
+                .len());
+            dbg!(send_size);
             for (f, c) in tx
-                .body_data_mut::<SeqFocus>()
+                .body_data_mut_offset::<SeqFocus>(offset * size_of::<u16>())
                 .iter_mut()
                 .zip(self.control_points[self.sent..].iter().take(send_size))
             {

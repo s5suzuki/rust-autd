@@ -112,7 +112,7 @@ fn impl_gain_macro(ast: &syn::DeriveInput) -> TokenStream {
         impl #impl_generics Gain for #name #ty_generics #where_clause {
             fn build(&mut self, geometry: &Geometry) -> Result<()> {
                 if self.built {return Ok(())}
-                self.data.resize(geometry.num_devices(), Drive{duty: 0x00, phase: 0x00});
+                self.data.resize(autd3_core::hardware_defined::NUM_TRANS_IN_UNIT * geometry.num_devices(), Drive{duty: 0x00, phase: 0x00});
                 self.calc(geometry)?;
                 self.built = true;
                 Ok(())

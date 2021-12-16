@@ -155,7 +155,7 @@ impl TxDatagram {
         let body_size = std::mem::size_of::<Drive>() * NUM_TRANS_IN_UNIT;
         let num_bodies = device_num;
         Self {
-            data: vec![0x00; header_size * num_bodies * body_size],
+            data: vec![0x00; header_size + num_bodies * body_size],
             header_size,
             num_bodies,
             body_size,
@@ -185,8 +185,8 @@ impl TxDatagram {
     pub fn body_data<T>(&self) -> &[T] {
         unsafe {
             std::slice::from_raw_parts(
-                self.data.as_ptr().add(self.header_size) as *mut T,
-                self.data.len() / size_of::<T>(),
+                self.data[self.header_size..].as_ptr() as *mut T,
+                self.data[self.header_size..].len() / size_of::<T>(),
             )
         }
     }
@@ -194,8 +194,17 @@ impl TxDatagram {
     pub fn body_data_mut<T>(&mut self) -> &mut [T] {
         unsafe {
             std::slice::from_raw_parts_mut(
-                self.data.as_mut_ptr().add(self.header_size) as *mut T,
-                self.data.len() / size_of::<T>(),
+                self.data[self.header_size..].as_mut_ptr() as *mut T,
+                self.data[self.header_size..].len() / size_of::<T>(),
+            )
+        }
+    }
+
+    pub fn body_data_mut_offset<T>(&mut self, offset: usize) -> &mut [T] {
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                self.data[(self.header_size + offset)..].as_mut_ptr() as *mut T,
+                self.data[(self.header_size + offset)..].len() / size_of::<T>(),
             )
         }
     }
