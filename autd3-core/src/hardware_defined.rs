@@ -1,15 +1,17 @@
 /*
- * File: hardware_defined.rs
+* File: hardware_defined.rs
  * Project: src
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/11/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
  *
  */
+
+use std::mem::size_of;
 
 pub const NUM_TRANS_IN_UNIT: usize = 249;
 pub const NUM_TRANS_X: usize = 18;
@@ -42,15 +44,10 @@ bitflags! {
         const OUTPUT_BALANCE = 1 << 1;
         const SILENT = 1 << 3;
         const FORCE_FAN = 1 << 4;
-        const OP_MODE = 1 << 5;
-        const SEQ_MODE = 1 << 6;
+        const SEQ_MODE = 1 << 5;
+        const SEQ_GAIN_MODE = 1 << 6;
     }
 }
-
-pub const OP_MODE_NORMAL: bool = false;
-pub const OP_MODE_SEQ: bool = true;
-pub const SEQ_MODE_POINT: bool = false;
-pub const SEQ_MODE_GAIN: bool = true;
 
 bitflags! {
     pub struct CPUControlFlags : u8 {
@@ -84,6 +81,13 @@ pub struct GlobalHeader {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
+pub struct Drive {
+    pub phase: u8,
+    pub duty: u8,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
 pub struct DelayOffset {
     pub delay: u8,
     pub offset: u8,
@@ -104,28 +108,90 @@ impl Default for DelayOffset {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 #[repr(C)]
-pub(crate) struct SeqFocus {
-    buf: [u16; 4],
+pub struct RxMessage {
+    pub ack: u8,
+    pub msg_id: u8,
 }
 
-impl SeqFocus {
-    pub(crate) fn set(&mut self, x: i32, y: i32, z: i32, duty: u8) {
-        self.buf[0] = (x & 0xFFFF) as u16;
-        self.buf[1] =
-            ((y << 2) & 0xFFFC) as u16 | ((x >> 30) & 0x0002) as u16 | ((x >> 16) & 0x0001) as u16;
-        self.buf[2] =
-            ((z << 4) & 0xFFF0) as u16 | ((y >> 28) & 0x0008) as u16 | ((y >> 14) & 0x0007) as u16;
-        self.buf[3] = (((duty as u16) << 6) & 0x3FC0) as u16
-            | ((z >> 26) & 0x0020) as u16
-            | ((z >> 12) & 0x001F) as u16;
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct FPGAInfo {
+    info: u8,
+}
+
+impl FPGAInfo {
+    pub fn new() -> Self {
+        Self { info: 0 }
+    }
+    pub fn is_fan_running(&self) -> bool {
+        (self.info & 0x01) != 0
     }
 }
 
-#[repr(u16)]
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum GainMode {
-    DutyPhaseFull = 1,
-    PhaseFull = 2,
-    PhaseHalf = 4,
+impl Default for FPGAInfo {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+pub struct TxDatagram {
+    data: Vec<u8>,
+    header_size: usize,
+    body_size: usize,
+    num_bodies: usize,
+}
+
+impl TxDatagram {
+    pub fn new(device_num: usize) -> Self {
+        let header_size = std::mem::size_of::<GlobalHeader>();
+        let body_size = std::mem::size_of::<Drive>() * NUM_TRANS_IN_UNIT;
+        let num_bodies = device_num;
+        Self {
+            data: vec![0x00; header_size * num_bodies * body_size],
+            header_size,
+            body_size,
+            num_bodies,
+        }
+    }
+
+    pub fn header(&mut self) -> &mut GlobalHeader {
+        unsafe {
+            (self.data.as_mut_ptr() as *mut GlobalHeader)
+                .as_mut()
+                .unwrap()
+        }
+    }
+
+    pub fn body(&mut self) -> *mut u8 {
+        unsafe { self.data.as_mut_ptr().add(self.header_size) }
+    }
+
+    pub fn body_data<T>(&mut self) -> &mut [T] {
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                self.data.as_mut_ptr() as *mut T,
+                self.data.len() / size_of::<T>(),
+            )
+        }
+    }
+
+    pub(crate) fn set_num_bodies(&mut self, num_bodies: usize) {
+        self.num_bodies = num_bodies;
+    }
+}
+
+pub struct RxDatagram {
+    data: Vec<RxMessage>,
+}
+
+impl RxDatagram {
+    pub fn messages(&self) -> impl Iterator<Item = &RxMessage> {
+        self.data.iter()
+    }
+}
+
+pub fn is_msg_processed(msg_id: u8, rx: &RxDatagram) -> bool {
+    rx.messages().all(|msg| msg.msg_id == msg_id)
 }

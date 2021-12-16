@@ -4,7 +4,7 @@
  * Created Date: 25/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/11/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -23,7 +23,7 @@ use autd3_core::{
     geometry::Geometry,
     hardware_defined::{
         CPUControlFlags, DelayOffset, FPGAControlFlags, GlobalHeader, NUM_TRANS_IN_UNIT,
-        OP_MODE_NORMAL, OP_MODE_SEQ, SEQ_MODE_GAIN, SEQ_MODE_POINT,
+        SEQ_GAIN_MODE_GAIN, SEQ_GAIN_MODE_POINT, SEQ_MODE_NORMAL, SEQ_MODE_SEQ,
     },
     link::Link,
     logic::Logic,
@@ -38,8 +38,8 @@ pub(crate) struct ControllerProps {
     pub(crate) silent_mode: bool,
     pub(crate) reads_fpga_info: bool,
     pub(crate) force_fan: bool,
-    pub(crate) op_mode: bool,
-    pub(crate) seq_mode: bool,
+    pub(crate) SEQ_MODE: bool,
+    pub(crate) SEQ_GAIN_MODE: bool,
     pub(crate) check_ack: bool,
 }
 
@@ -58,8 +58,8 @@ pub struct Controller<L: Link> {
     /// If true, this controller check ack from devices. Default is false.
     pub check_ack: bool,
     output_enable: bool,
-    op_mode: bool,
-    seq_mode: bool,
+    SEQ_MODE: bool,
+    SEQ_GAIN_MODE: bool,
     tx_buf: Vec<u8>,
     rx_buf: Vec<u8>,
     fpga_infos: Vec<u8>,
@@ -78,8 +78,8 @@ impl<L: Link> Controller<L> {
             output_balance: props.output_balance,
             output_enable: props.output_enable,
             check_ack: props.check_ack,
-            seq_mode: props.seq_mode,
-            op_mode: props.op_mode,
+            SEQ_GAIN_MODE: props.SEQ_GAIN_MODE,
+            SEQ_MODE: props.SEQ_MODE,
             tx_buf: vec![0x00; num_devices * EC_OUTPUT_FRAME_SIZE],
             rx_buf: vec![0x00; num_devices * EC_INPUT_FRAME_SIZE],
             fpga_infos: vec![0x00; num_devices],
@@ -104,8 +104,8 @@ impl<L: Link> Controller<L> {
                 reads_fpga_info: false,
                 force_fan: false,
                 silent_mode: true,
-                op_mode: OP_MODE_NORMAL,
-                seq_mode: SEQ_MODE_POINT,
+                SEQ_MODE: SEQ_MODE_NORMAL,
+                SEQ_GAIN_MODE: SEQ_GAIN_MODE_POINT,
                 output_balance: false,
                 output_enable: false,
                 check_ack: false,
@@ -195,7 +195,7 @@ impl<L: Link> Controller<L> {
         let mut mod_sent = 0;
         m.build()?;
 
-        self.op_mode = OP_MODE_NORMAL;
+        self.SEQ_MODE = SEQ_MODE_NORMAL;
         self.output_enable = true;
         g.build(&self.geometry)?;
 
@@ -230,7 +230,7 @@ impl<L: Link> Controller<L> {
     /// * `g` - Gain
     ///
     pub async fn send_gain<G: Gain>(&mut self, g: &mut G) -> Result<bool> {
-        self.op_mode = OP_MODE_NORMAL;
+        self.SEQ_MODE = SEQ_MODE_NORMAL;
         self.output_enable = true;
         g.build(&self.geometry)?;
 
@@ -279,8 +279,8 @@ impl<L: Link> Controller<L> {
         let mut seq_sent = 0;
 
         self.output_enable = true;
-        self.op_mode = OP_MODE_SEQ;
-        self.seq_mode = SEQ_MODE_POINT;
+        self.SEQ_MODE = SEQ_MODE_SEQ;
+        self.SEQ_GAIN_MODE = SEQ_GAIN_MODE_POINT;
         loop {
             let msg_id = autd3_core::logic::Logic::get_id();
             Logic::pack_header(msg_id, self.fpga_flag(), self.cpu_flag(), &mut self.tx_buf);
@@ -311,8 +311,8 @@ impl<L: Link> Controller<L> {
         let mut seq_sent = 0;
 
         self.output_enable = true;
-        self.op_mode = OP_MODE_SEQ;
-        self.seq_mode = SEQ_MODE_POINT;
+        self.SEQ_MODE = SEQ_MODE_SEQ;
+        self.SEQ_GAIN_MODE = SEQ_GAIN_MODE_POINT;
         loop {
             let msg_id = Logic::pack_header_mod(
                 m,
@@ -341,8 +341,8 @@ impl<L: Link> Controller<L> {
     pub async fn send_gain_seq(&mut self, s: &mut GainSequence) -> Result<bool> {
         let mut seq_sent = 0;
         self.output_enable = true;
-        self.op_mode = OP_MODE_SEQ;
-        self.seq_mode = SEQ_MODE_GAIN;
+        self.SEQ_MODE = SEQ_MODE_SEQ;
+        self.SEQ_GAIN_MODE = SEQ_GAIN_MODE_GAIN;
         loop {
             let msg_id = autd3_core::logic::Logic::get_id();
             Logic::pack_header(msg_id, self.fpga_flag(), self.cpu_flag(), &mut self.tx_buf);
@@ -373,8 +373,8 @@ impl<L: Link> Controller<L> {
         let mut seq_sent = 0;
 
         self.output_enable = true;
-        self.op_mode = OP_MODE_SEQ;
-        self.seq_mode = SEQ_MODE_GAIN;
+        self.SEQ_MODE = SEQ_MODE_SEQ;
+        self.SEQ_GAIN_MODE = SEQ_GAIN_MODE_GAIN;
         loop {
             let msg_id = Logic::pack_header_mod(
                 m,
@@ -481,10 +481,10 @@ impl<L: Link> Controller<L> {
             props: ControllerProps {
                 geometry: self.geometry,
                 reads_fpga_info: self.reads_fpga_info,
-                seq_mode: self.seq_mode,
+                SEQ_GAIN_MODE: self.SEQ_GAIN_MODE,
                 silent_mode: self.silent_mode,
                 force_fan: self.force_fan,
-                op_mode: self.op_mode,
+                SEQ_MODE: self.SEQ_MODE,
                 output_balance: self.output_balance,
                 output_enable: self.output_enable,
                 check_ack: self.check_ack,
@@ -506,11 +506,11 @@ impl<L: Link> Controller<L> {
         if self.force_fan {
             header |= FPGAControlFlags::FORCE_FAN;
         }
-        if self.op_mode {
-            header |= FPGAControlFlags::OP_MODE;
-        }
-        if self.seq_mode {
+        if self.SEQ_MODE {
             header |= FPGAControlFlags::SEQ_MODE;
+        }
+        if self.SEQ_GAIN_MODE {
+            header |= FPGAControlFlags::SEQ_GAIN_MODE;
         }
         header
     }
