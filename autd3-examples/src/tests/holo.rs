@@ -4,7 +4,7 @@
  * Created Date: 29/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 03/06/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -50,35 +50,35 @@ pub async fn holo<L: Link>(mut autd: Controller<L>) -> Result<Controller<L>> {
     match s.trim().parse::<usize>() {
         Ok(0) => {
             let mut g = Sdp::<NalgebraBackend>::new(foci, amps);
-            autd.send(&mut g, &mut m).await?;
+            autd.send(&mut m, &mut g).await?;
         }
         Ok(1) => {
             let mut g = Evd::<NalgebraBackend>::new(foci, amps);
-            autd.send(&mut g, &mut m).await?;
+            autd.send(&mut m, &mut g).await?;
         }
         Ok(2) => {
             let mut g = Naive::<NalgebraBackend>::new(foci, amps);
-            autd.send(&mut g, &mut m).await?;
+            autd.send(&mut m, &mut g).await?;
         }
         Ok(3) => {
             let mut g = Gs::<NalgebraBackend>::new(foci, amps);
-            autd.send(&mut g, &mut m).await?;
+            autd.send(&mut m, &mut g).await?;
         }
         Ok(4) => {
             let mut g = GsPat::<NalgebraBackend>::new(foci, amps);
-            autd.send(&mut g, &mut m).await?;
+            autd.send(&mut m, &mut g).await?;
         }
         Ok(5) => {
             let mut g = Lm::<NalgebraBackend>::new(foci, amps);
-            autd.send(&mut g, &mut m).await?;
+            autd.send(&mut m, &mut g).await?;
         }
         Ok(6) => {
             let mut g = Greedy::new(foci, amps);
-            autd.send(&mut g, &mut m).await?;
+            autd.send(&mut m, &mut g).await?;
         }
         _ => {
             let mut g = Sdp::<NalgebraBackend>::new(foci, amps);
-            autd.send(&mut g, &mut m).await?;
+            autd.send(&mut m, &mut g).await?;
         }
     };
 

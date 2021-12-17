@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 15/10/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -37,7 +37,7 @@ pub async fn seq<L: Link>(mut autd: Controller<L>) -> Result<Controller<L>> {
 
     let f = seq.set_freq(1.0);
     println!("Actual frequency is {} Hz", f);
-    autd.send_seq_mod(&mut seq, &mut m).await?;
+    autd.send(&mut m, &mut seq).await?;
 
     Ok(autd)
 }

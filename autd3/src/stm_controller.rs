@@ -4,7 +4,7 @@
  * Created Date: 26/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 14/10/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -14,18 +14,18 @@
 use crate::controller::{Controller, ControllerProps};
 use anyhow::Result;
 use autd3_core::{
-    ec_config::EC_OUTPUT_FRAME_SIZE,
+    datagrams::CommonHeader,
     gain::Gain,
-    hardware_defined::{CPUControlFlags, FPGAControlFlags},
+    hardware_defined::{CPUControlFlags, FPGAControlFlags, TxDatagram},
+    interface::IDatagramHeader,
     link::Link,
-    logic::Logic,
 };
 use autd3_timer::{Timer, TimerCallback};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub(crate) struct StmTimerCallback<L: Link> {
     pub(crate) link: L,
-    pub(crate) buffers: Vec<Vec<u8>>,
+    pub(crate) buffers: Vec<TxDatagram>,
     idx: usize,
     lock: AtomicBool,
 }
@@ -40,7 +40,7 @@ impl<L: Link> StmTimerCallback<L> {
         }
     }
 
-    pub fn add(&mut self, data: Vec<u8>) {
+    pub fn add(&mut self, data: TxDatagram) {
         self.buffers.push(data);
     }
 
@@ -87,21 +87,22 @@ impl<L: Link> StmController<L> {
     /// * `g` - Gain
     ///
     pub fn add<G: Gain>(&mut self, g: &mut G) -> Result<()> {
-        g.build(&self.props.geometry)?;
-
-        let mut build_buf = vec![0x00; self.props.geometry.num_devices() * EC_OUTPUT_FRAME_SIZE];
-
-        let msg_id = autd3_core::logic::Logic::get_id();
-        Logic::pack_header(
-            msg_id,
-            self.fpga_flag(),
-            CPUControlFlags::NONE,
-            &mut build_buf,
+        let mut buf = TxDatagram::new(self.props.geometry.num_devices());
+        let mut header = CommonHeader::new(
+            FPGAControlFlags::OUTPUT_ENABLE
+                | FPGAControlFlags::OUTPUT_BALANCE
+                | FPGAControlFlags::SILENT
+                | FPGAControlFlags::FORCE_FAN,
         );
 
-        Logic::pack_body(g, &mut build_buf);
+        header.init()?;
+        g.init();
 
-        self.callback.add(build_buf);
+        let msg_id = Controller::<L>::get_id();
+        header.pack(msg_id, &mut buf, self.fpga_flag(), CPUControlFlags::NONE);
+        g.pack(&self.props.geometry, &mut buf)?;
+
+        self.callback.add(buf);
 
         Ok(())
     }

@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/11/2021
+ * Last Modified: 16/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -21,15 +21,60 @@ use crate::hardware_defined::is_missing_transducer;
 
 use super::hardware_defined::{NUM_TRANS_IN_UNIT, NUM_TRANS_X, NUM_TRANS_Y, TRANS_SPACING_MM};
 
-pub struct Device {
-    global_trans_positions: Vec<Vector3>,
+pub struct Transducer {
+    id: usize,
+    pos: Vector3,
     x_direction: Vector3,
     y_direction: Vector3,
     z_direction: Vector3,
 }
 
+impl Transducer {
+    pub fn new(
+        id: usize,
+        x: f64,
+        y: f64,
+        z: f64,
+        x_direction: Vector3,
+        y_direction: Vector3,
+        z_direction: Vector3,
+    ) -> Self {
+        Self {
+            id,
+            pos: Vector3::new(x, y, z),
+            x_direction,
+            y_direction,
+            z_direction,
+        }
+    }
+
+    pub fn id(&self) -> usize {
+        self.id
+    }
+
+    pub fn position(&self) -> &Vector3 {
+        &self.pos
+    }
+
+    pub fn x_direction(&self) -> &Vector3 {
+        &self.x_direction
+    }
+
+    pub fn y_direction(&self) -> &Vector3 {
+        &self.y_direction
+    }
+
+    pub fn z_direction(&self) -> &Vector3 {
+        &self.z_direction
+    }
+}
+
+pub struct Device {
+    global_trans_positions: Vec<Transducer>,
+}
+
 impl Device {
-    pub fn new(position: Vector3, rotation: UnitQuaternion) -> Device {
+    pub fn new(id: usize, position: Vector3, rotation: UnitQuaternion) -> Self {
         let rot_mat: Matrix4x4 = From::from(rotation);
         let trans_mat = rot_mat.append_translation(&position);
         let x_direction = Self::get_direction(Vector3::x(), rotation);
@@ -37,39 +82,35 @@ impl Device {
         let z_direction = Self::get_direction(Vector3::z(), rotation);
 
         let mut global_trans_positions = Vec::with_capacity(NUM_TRANS_IN_UNIT);
+        let mut i = id * NUM_TRANS_IN_UNIT;
         for y in 0..NUM_TRANS_Y {
             for x in 0..NUM_TRANS_X {
-                if !is_missing_transducer(x, y) {
-                    let local_pos = Vector4::new(
-                        x as f64 * TRANS_SPACING_MM,
-                        y as f64 * TRANS_SPACING_MM,
-                        0.,
-                        1.,
-                    );
-                    let homo = trans_mat * local_pos;
-                    global_trans_positions.push(Vector3::new(homo.x, homo.y, homo.z));
+                if is_missing_transducer(x, y) {
+                    continue;
                 }
+                let local_pos = Vector4::new(
+                    x as f64 * TRANS_SPACING_MM,
+                    y as f64 * TRANS_SPACING_MM,
+                    0.,
+                    1.,
+                );
+                let homo = trans_mat * local_pos;
+                global_trans_positions.push(Transducer::new(
+                    i,
+                    homo.x,
+                    homo.y,
+                    homo.z,
+                    x_direction,
+                    y_direction,
+                    z_direction,
+                ));
+                i += 1;
             }
         }
 
         Device {
             global_trans_positions,
-            x_direction,
-            y_direction,
-            z_direction,
         }
-    }
-
-    pub fn x_direction(&self) -> Vector3 {
-        self.x_direction
-    }
-
-    pub fn y_direction(&self) -> Vector3 {
-        self.y_direction
-    }
-
-    pub fn z_direction(&self) -> Vector3 {
-        self.z_direction
     }
 
     fn get_direction(dir: Vector3, rotation: UnitQuaternion) -> Vector3 {
@@ -78,16 +119,16 @@ impl Device {
     }
 
     pub fn local_position(&self, global_position: Vector3) -> Vector3 {
-        let local_origin = self.global_trans_positions[0];
-        let x_dir = self.x_direction;
-        let y_dir = self.y_direction;
-        let z_dir = self.z_direction;
+        let local_origin = self.global_trans_positions[0].position();
+        let x_dir = self.global_trans_positions[0].x_direction();
+        let y_dir = self.global_trans_positions[0].y_direction();
+        let z_dir = self.global_trans_positions[0].z_direction();
         let rv = global_position - local_origin;
-        Vector3::new(rv.dot(&x_dir), rv.dot(&y_dir), rv.dot(&z_dir))
+        Vector3::new(rv.dot(x_dir), rv.dot(y_dir), rv.dot(z_dir))
     }
 
-    pub fn transducers(&self) -> impl Iterator<Item = &Vector3> {
-        self.global_trans_positions.iter()
+    pub fn transducers(&self) -> &[Transducer] {
+        &self.global_trans_positions
     }
 }
 
@@ -146,14 +187,19 @@ impl Geometry {
     /// * `rot` - Rotation quaternion.
     ///
     pub fn add_device_quaternion(&mut self, position: Vector3, rotation: UnitQuaternion) {
-        self.devices.push(Device::new(position, rotation));
+        let id = self.devices.len();
+        self.devices.push(Device::new(id, position, rotation));
     }
 
     pub fn num_devices(&self) -> usize {
         self.devices.len()
     }
 
-    pub fn devices(&self) -> impl Iterator<Item = &Device> {
-        self.devices.iter()
+    pub fn devices(&self) -> &[Device] {
+        &self.devices
+    }
+
+    pub fn transducers(&self) -> impl Iterator<Item = &Transducer> {
+        self.devices.iter().flat_map(|dev| dev.transducers())
     }
 }
