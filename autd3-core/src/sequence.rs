@@ -4,7 +4,7 @@
  * Created Date: 24/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 16/12/2021
+ * Last Modified: 17/12/2021
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -150,10 +150,6 @@ impl IDatagramBody for PointSequence {
         }
         let fixed_num_unit = 256.0 / geometry.wavelength;
         for device in geometry.devices() {
-            dbg!(tx
-                .body_data_mut_offset::<SeqFocus>(offset * size_of::<u16>())
-                .len());
-            dbg!(send_size);
             for (f, c) in tx
                 .body_data_mut_offset::<SeqFocus>(offset * size_of::<u16>())
                 .iter_mut()
