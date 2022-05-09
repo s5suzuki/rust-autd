@@ -169,15 +169,12 @@ impl Geometry<NormalTransducer> {
     ///
     /// ```
     /// use std::f64::consts::PI;
-    /// use autd3_core::{
-    ///     FrequencyConfig,
-    ///     geometry::{Vector3, GeometryBuilder}
-    /// };
+    /// use autd3_core::geometry::{Vector3, GeometryBuilder};
     ///
     /// let mut geometry = GeometryBuilder::new().build();
     ///
-    /// geometry.add_device(Vector3::zeros(), Vector3::zeros(), FrequencyConfig::Uniform(40e3)).expect("frequency configuration invalid");
-    /// geometry.add_device(Vector3::new(192., 0., 0.), Vector3::new(-PI, 0., 0.), FrequencyConfig::Uniform(40e3)).expect("frequency configuration invalid");
+    /// geometry.add_device(Vector3::zeros(), Vector3::zeros());
+    /// geometry.add_device(Vector3::new(192., 0., 0.), Vector3::new(-PI, 0., 0.));
     /// ```
     pub fn add_device(&mut self, position: Vector3, euler_angles: Vector3) {
         let q = UnitQuaternion::from_axis_angle(&Vector3::z_axis(), euler_angles.x)
