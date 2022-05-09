@@ -54,6 +54,9 @@ fn get_adapter() -> String {
 fn main() -> Result<()> {
     let mut geometry = GeometryBuilder::new().legacy_mode().build();
     geometry.add_device(Vector3::zeros(), Vector3::zeros());
+    geometry.add_device(Vector3::zeros(), Vector3::zeros());
+    geometry.add_device(Vector3::zeros(), Vector3::zeros());
+    geometry.add_device(Vector3::zeros(), Vector3::zeros());
     // let mut geometry = GeometryBuilder::new().build();
     // geometry.add_device(Vector3::zeros(), Vector3::zeros());
     // geometry
@@ -62,8 +65,8 @@ fn main() -> Result<()> {
 
     let ifname = get_adapter();
     let config = Config {
-        cycle_ticks: 2,
-        high_precision_timer: true,
+        cycle_ticks: 4,
+        high_precision_timer: false,
     };
     let link = SOEM::new(&ifname, geometry.num_devices() as u16, config, |msg| {
         eprintln!("unrecoverable error occurred: {}", msg);

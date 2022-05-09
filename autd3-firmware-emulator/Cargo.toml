@@ -11,5 +11,5 @@ readme = "README.md"
 keywords = ["autd"]
 
 [dependencies]
-autd3-driver = {path = "../autd3-driver"}
+autd3-driver = {path = "../autd3-driver", version="2.0.0"}
 num-integer = "0.1.45"
