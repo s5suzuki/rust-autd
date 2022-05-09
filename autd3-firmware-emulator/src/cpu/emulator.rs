@@ -4,7 +4,7 @@
  * Created Date: 06/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 08/05/2022
+ * Last Modified: 10/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -187,12 +187,12 @@ impl CPUEmulator {
             (0..NUM_TRANS_IN_UNIT)
                 .for_each(|i| self.bram_write(BRAM_SELECT_NORMAL, (i << 1) as _, body.data[i]));
         } else if header.cpu_flag.contains(CPUControlFlags::IS_DUTY) {
-            (0..NUM_TRANS_IN_UNIT)
-                .for_each(|i| self.bram_write(BRAM_SELECT_NORMAL, (i << 1) as _, body.data[i]));
-        } else {
             (0..NUM_TRANS_IN_UNIT).for_each(|i| {
                 self.bram_write(BRAM_SELECT_NORMAL, (i << 1) as u16 + 1, body.data[i])
             });
+        } else {
+            (0..NUM_TRANS_IN_UNIT)
+                .for_each(|i| self.bram_write(BRAM_SELECT_NORMAL, (i << 1) as u16, body.data[i]));
         }
     }
 

@@ -13,6 +13,6 @@ keywords = ["autd"]
 [dependencies]
 anyhow = "1.0.57"
 autd3-core = {path="../autd3-core", version="2.0.0"}
-autd3-firmware-emulator = {path="../autd3-firmware-emulator", version="2.0.0"}
+autd3-firmware-emulator = {path="../autd3-firmware-emulator", version="2.0.1"}
 log = "0.4.17"
 thiserror = "1.0.30"
