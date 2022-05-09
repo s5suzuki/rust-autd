@@ -14,9 +14,6 @@ jobs:
       run: git submodule update --init --force --recursive
     - name: publish
       run: |
-        cd autd3-traits
-        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
-        cd ..
         cd autd3-driver
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
@@ -26,6 +23,9 @@ jobs:
         cd autd3-core
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
+        cd autd3-traits
+        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
+        cd ..
         cd autd3
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd ..
