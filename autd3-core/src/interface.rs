@@ -1,36 +1,40 @@
 /*
  * File: interface.rs
  * Project: src
- * Created Date: 16/12/2021
+ * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 16/12/2021
+ * Last Modified: 06/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Hapis Lab. All rights reserved.
  *
  */
 
-use crate::{
-    geometry::Geometry,
-    hardware_defined::{CPUControlFlags, FPGAControlFlags, TxDatagram},
-};
+use autd3_driver::TxDatagram;
+
+use crate::geometry::{Geometry, Transducer};
 use anyhow::Result;
 
-pub trait IDatagramHeader {
+pub struct Empty;
+pub struct Filled;
+
+pub trait Sendable<T: Transducer> {
+    type H;
+    type B;
     fn init(&mut self) -> Result<()>;
-    fn pack(
-        &mut self,
-        msg_id: u8,
-        tx: &mut TxDatagram,
-        fpga_flag: FPGAControlFlags,
-        cpu_flag: CPUControlFlags,
-    );
+    fn pack(&mut self, msg_id: u8, geometry: &Geometry<T>, tx: &mut TxDatagram) -> Result<()>;
     fn is_finished(&self) -> bool;
 }
 
-pub trait IDatagramBody {
-    fn init(&mut self);
-    fn pack(&mut self, geometry: &Geometry, tx: &mut TxDatagram) -> Result<()>;
+pub trait DatagramHeader {
+    fn init(&mut self) -> Result<()>;
+    fn pack(&mut self, msg_id: u8, tx: &mut TxDatagram) -> Result<()>;
+    fn is_finished(&self) -> bool;
+}
+
+pub trait DatagramBody<T: Transducer> {
+    fn init(&mut self) -> Result<()>;
+    fn pack(&mut self, msg_id: u8, geometry: &Geometry<T>, tx: &mut TxDatagram) -> Result<()>;
     fn is_finished(&self) -> bool;
 }

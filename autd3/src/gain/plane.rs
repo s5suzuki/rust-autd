@@ -1,36 +1,32 @@
 /*
  * File: plane.rs
  * Project: gain
- * Created Date: 30/05/2021
+ * Created Date: 05/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 16/12/2021
+ * Last Modified: 05/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Hapis Lab. All rights reserved.
  *
  */
 
-use std::f64::consts::PI;
-
-use anyhow::Result;
 use autd3_core::{
-    gain::Gain,
-    geometry::{Geometry, Vector3},
-    hardware_defined::Drive,
+    gain::{Gain, GainProps, IGain},
+    geometry::{DriveData, Geometry, Transducer, Vector3},
 };
+
 use autd3_traits::Gain;
 
-/// Gain to create plane wave
+/// Gain to produce single focal point
 #[derive(Gain)]
-pub struct Plane {
-    data: Vec<Drive>,
-    built: bool,
-    duty: u8,
+pub struct Plane<T: Transducer> {
+    props: GainProps<T>,
+    power: f64,
     dir: Vector3,
 }
 
-impl Plane {
+impl<T: Transducer> Plane<T> {
     /// constructor
     ///
     /// # Arguments
@@ -38,34 +34,32 @@ impl Plane {
     /// * `dir` - direction
     ///
     pub fn new(dir: Vector3) -> Self {
-        Self::with_duty(dir, 0xFF)
+        Self::with_power(dir, 1.0)
     }
 
-    /// constructor with duty
+    /// constructor with power
     ///
     /// # Arguments
     ///
     /// * `dir` - direction
-    /// * `duty` - duty ratio
+    /// * `power` - normalized power (from 0 to 1)
     ///
-    pub fn with_duty(dir: Vector3, duty: u8) -> Self {
+    pub fn with_power(dir: Vector3, power: f64) -> Self {
         Self {
-            data: vec![],
-            built: false,
-            duty,
+            props: GainProps::new(),
+            power,
             dir,
         }
     }
+}
 
-    #[allow(clippy::unnecessary_wraps)]
-    fn calc(&mut self, geometry: &Geometry) -> Result<()> {
-        let wavenum = 2.0 * PI / geometry.wavelength;
-        let duty = self.duty;
-        for (trans, data) in geometry.transducers().zip(self.data.iter_mut()) {
-            let dist = self.dir.dot(trans.position());
-            data.duty = duty;
-            data.phase = autd3_core::utils::to_phase(wavenum * dist);
-        }
+impl<T: Transducer> IGain<T> for Plane<T> {
+    fn calc(&mut self, geometry: &Geometry<T>) -> anyhow::Result<()> {
+        geometry.transducers().for_each(|tr| {
+            let dist = self.dir.dot(tr.position());
+            let phase = tr.align_phase_at(dist, geometry.sound_speed());
+            self.props.drives.set_drive(tr, phase, self.power);
+        });
         Ok(())
     }
 }

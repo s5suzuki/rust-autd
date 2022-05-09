@@ -1,44 +1,48 @@
 /*
  * File: null.rs
  * Project: gain
- * Created Date: 26/05/2021
+ * Created Date: 01/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 16/12/2021
+ * Last Modified: 05/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Hapis Lab. All rights reserved.
  *
  */
 
-use anyhow::Result;
-use autd3_core::{gain::Gain, geometry::Geometry, hardware_defined::Drive};
-use autd3_traits::Gain;
-use std::vec;
+use autd3_core::{
+    gain::{Gain, GainProps, IGain},
+    geometry::{DriveData, Geometry, Transducer},
+};
 
-/// Gain with no output
+use autd3_traits::Gain;
+
+/// Gain to produce single focal point
 #[derive(Gain)]
-pub struct Null {
-    data: Vec<Drive>,
-    built: bool,
+pub struct Null<T: Transducer> {
+    props: GainProps<T>,
 }
 
-impl Null {
+impl<T: Transducer> Null<T> {
     /// constructor
     pub fn new() -> Self {
         Self {
-            data: vec![],
-            built: false,
+            props: GainProps::new(),
         }
     }
+}
 
-    #[allow(clippy::unnecessary_wraps)]
-    fn calc(&mut self, _geometry: &Geometry) -> Result<()> {
+impl<T: Transducer> IGain<T> for Null<T> {
+    fn calc(&mut self, geometry: &Geometry<T>) -> anyhow::Result<()> {
+        geometry.transducers().for_each(|tr| {
+            self.props.drives.set_drive(tr, 0.0, 0.0);
+        });
         Ok(())
     }
 }
 
-impl Default for Null {
+impl<T: Transducer> Default for Null<T> {
     fn default() -> Self {
         Self::new()
     }

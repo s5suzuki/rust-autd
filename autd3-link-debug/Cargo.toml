@@ -1,0 +1,18 @@
+[package]
+name = "autd3-link-debug"
+version = "2.0.0"
+authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
+edition = "2021"
+
+license-file = "LICENSE"
+description = "Link for debug."
+repository = "https://github.com/shinolab/rust-autd"
+readme = "README.md"
+keywords = ["autd"]
+
+[dependencies]
+anyhow = "1.0.57"
+autd3-core = {path="../autd3-core"}
+autd3-firmware-emulator = {path="../autd3-firmware-emulator"}
+log = "0.4.17"
+thiserror = "1.0.30"

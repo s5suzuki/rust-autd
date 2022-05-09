@@ -1,23 +1,18 @@
-# Rust AUTD Examples
+# autd3-examples
+
+
+## SOEM
 
 ```
-cargo run --bin soem --features soem    
+cargo run --release --features soem --bin soem
 ```
 
-or if you use TwinCAT,
-```
-cargo run --bin twincat --features twincat    
-```
+## TwinCAT
 
-or if you use emulator,
 ```
-cargo run --bin emulator --features emulator    
+cargo run --release --features twincat --bin twincat
 ```
-
-# Caution
-
-If you use Linux/macOS, you may have to run as root.
 
 # Author
 
-Shun Suzuki, 2021
+Shun Suzuki, 2022

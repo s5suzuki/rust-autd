@@ -1,3 +1,3 @@
-[submodule "autd3-soem-link/deps/SOEM"]
-	path = autd3-soem-link/deps/SOEM
+[submodule "autd3-link-soem/3rdparty/SOEM"]
+	path = autd3-link-soem/3rdparty/SOEM
 	url = https://github.com/OpenEtherCATsociety/SOEM.git

@@ -1,26 +1,28 @@
 /*
  * File: error.rs
  * Project: src
- * Created Date: 26/05/2021
+ * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 14/10/2021
+ * Last Modified: 06/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Hapis Lab. All rights reserved.
  *
  */
 
 use thiserror::Error;
 
+use autd3_driver::{MAX_CYCLE, NUM_TRANS_IN_UNIT};
+
 #[derive(Error, Debug)]
-pub enum AutdError {
+pub enum AUTDInternalError {
     #[error("Link is closed.")]
     LinkClosed,
-    #[error("The maximum frequency division ratio is {0}")]
-    FrequencyDivisionRatioOutOfRange(usize),
-    #[error("The maximum size of Modulation is {0}")]
-    ModulationOutOfBuffer(usize),
-    #[error("The maximum size of PointSequence is {0}")]
-    PointSequenceOutOfBuffer(usize),
+    #[error("{} device{} connected, but {} {} specified", a, if *a == 1 {" is"} else {"s are"}, b, if *b== 1 {"is"} else {"are"})]
+    DeviceNumberNotCorrect { a: usize, b: usize },
+    #[error("{} transducer{} specified, but {} is correct", a,if *a == 1 {" is"} else {"s are"}, NUM_TRANS_IN_UNIT)]
+    TransducerNumberNotCorrect { a: usize },
+    #[error("Maximum cycle is {} , but {0} is specified", MAX_CYCLE)]
+    CycleOutOfRange(u16),
 }

@@ -4,63 +4,68 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 03/10/2021
+ * Last Modified: 09/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
  *
  */
 
-extern crate colored;
+#[macro_export]
+macro_rules! run {
+    ($autd:ident) => {{
+        use autd3::prelude::*;
+        use colored::*;
+        use std::io::{self, Write};
 
-use crate::tests::*;
-use anyhow::Result;
-use autd3::prelude::*;
-use colored::*;
-use std::io::{self, Write};
+        let mut autd = $autd;
 
-pub async fn run<L: Link>(autd: Controller<L>) -> Result<()> {
-    let mut autd = autd;
+        autd.check_ack = true;
 
-    println!("***** Firmware information *****");
-    let firm_list = autd.firmware_infos().await?;
-    for firm_info in firm_list {
-        println!("{}", firm_info);
-    }
-    println!("********************************");
+        println!("***** Firmware information *****");
+        autd.firmware_infos()?.iter().for_each(|firm_info| {
+            println!("{}", firm_info);
+        });
+        println!("********************************");
 
-    autd.clear().await?;
+        autd.clear()?;
 
-    loop {
-        println!("[0]: Single Focal Point Test");
-        println!("[1]: BesselBeam Test");
-        println!("[2]: Multiple foci Test");
-        println!("[3]: Spatio-Temporal Modulation Test");
-        println!("[4]: PointSequence (hardware STM) Test");
-        println!("[5]: GainSequence (hardware STM with arbitrary Gain) Test");
-        println!("[Others]: Finish");
-        print!("{}", "Choose number: ".green().bold());
-        io::stdout().flush()?;
+        autd.synchronize()?;
 
-        let mut s = String::new();
-        io::stdin().read_line(&mut s)?;
-        autd = match s.trim().parse::<usize>() {
-            Ok(0) => simple(autd).await?,
-            Ok(1) => bessel(autd).await?,
-            Ok(2) => holo(autd).await?,
-            Ok(3) => stm(autd).await?,
-            Ok(4) => seq(autd).await?,
-            Ok(5) => seq_gain(autd).await?,
-            _ => break,
-        };
+        loop {
+            println!("[0]: Single Focal Point Test");
+            println!("[1]: BesselBeam Test");
+            println!("[2]: Multiple foci Test");
+            println!("[3]: PointSTM Test");
+            println!("[4]: GainSTM Test");
+            println!("[9]: Transducer Test");
+            println!("[Others]: Finish");
+            print!("{}", "Choose number: ".green().bold());
+            io::stdout().flush()?;
 
-        println!("press any key to finish...");
-        let mut _s = String::new();
-        io::stdin().read_line(&mut _s)?;
+            let mut s = String::new();
+            io::stdin().read_line(&mut s)?;
+            match s.trim().parse::<usize>() {
+                Ok(0) => focus!(autd),
+                Ok(1) => bessel!(autd),
+                Ok(2) => holo!(autd),
+                Ok(3) => point_stm!(autd),
+                Ok(4) => gain_stm!(autd),
+                Ok(9) => trans_test!(autd),
+                _ => break,
+            };
 
-        autd.stop().await?;
-        println!("finish");
-    }
+            println!("press any key to finish...");
+            let mut _s = String::new();
+            io::stdin().read_line(&mut _s)?;
 
-    Ok(())
+            // let res = autd.stop()?;
+            let mut m = Static::new(0);
+            let res = autd.send(&mut m).flush()?;
+            println!("stop: {}", res);
+        }
+
+        let res = autd.close()?;
+        println!("finish: {}", res);
+    }};
 }

@@ -1,29 +1,23 @@
 /*
  * File: lib.rs
  * Project: src
- * Created Date: 24/05/2021
+ * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 16/12/2021
+ * Last Modified: 08/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Hapis Lab. All rights reserved.
  *
  */
 
-#[macro_use]
-extern crate bitflags;
-
-pub mod datagrams;
-pub mod delay_offset;
-pub mod ec_config;
 pub mod error;
-pub mod firmware_version;
 pub mod gain;
 pub mod geometry;
-pub mod hardware_defined;
 pub mod interface;
 pub mod link;
 pub mod modulation;
-pub mod sequence;
+pub mod stm;
 pub mod utils;
+
+pub use autd3_driver::*;

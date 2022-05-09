@@ -1,24 +1,26 @@
 /*
  * File: mod.rs
  * Project: gain
- * Created Date: 26/05/2021
+ * Created Date: 28/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 30/05/2021
+ * Last Modified: 09/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Hapis Lab. All rights reserved.
  *
  */
 
-mod bessel;
-mod focus;
-mod grouped;
-mod null;
-mod plane;
+pub mod bessel;
+pub mod focus;
+pub mod grouped;
+pub mod null;
+pub mod plane;
+pub mod trans_test;
 
 pub use bessel::Bessel;
 pub use focus::Focus;
 pub use grouped::Grouped;
 pub use null::Null;
 pub use plane::Plane;
+pub use trans_test::TransducerTest;

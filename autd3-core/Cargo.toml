@@ -1,28 +1,19 @@
 [package]
 name = "autd3-core"
-version = "1.10.0"
+version = "2.0.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2021"
 
-license = "MIT"
+license-file = "LICENSE"
 description = "Core functions of AUTD3"
 repository = "https://github.com/shinolab/rust-autd"
 readme = "README.md"
 keywords = ["autd"]
-exclude = [
-    ".github/*",
-]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.44"
+anyhow = "1.0.57"
+autd3-driver = {path = "../autd3-driver"}
 bitflags = "1.3.2"
-nalgebra = "0.29.0"
-thiserror = "1.0.25"
-autd3-traits = {path="../autd3-traits", version="1.10.0"}
-
-[features]
-phase_inverted = []
-default = ["phase_inverted"]
-all = ["phase_inverted"]
+itertools = "0.10.3"
+nalgebra = "0.31.0"
+thiserror = "1.0.30"

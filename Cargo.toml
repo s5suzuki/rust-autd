@@ -1,13 +1,15 @@
 [workspace]
 
 members = [
-    "autd3-timer",
-    "autd3-traits",
-    "autd3-core",
     "autd3",
-    "autd3-soem-link",
-    "autd3-twincat-link",
-    "autd3-emulator-link",
+    "autd3-core",
+    "autd3-driver",
     "autd3-examples",
-    "autd3-holo-gain"
+    "autd3-firmware-emulator",
+    "autd3-gain-holo",
+    "autd3-link-debug",
+    "autd3-link-emulator",
+    "autd3-link-soem",
+    "autd3-link-twincat",
+    "autd3-traits",
 ]

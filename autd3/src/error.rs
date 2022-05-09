@@ -1,20 +1,20 @@
 /*
  * File: error.rs
  * Project: src
- * Created Date: 30/05/2021
+ * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 24/11/2021
+ * Last Modified: 05/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Hapis Lab. All rights reserved.
  *
  */
 
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum AutdError {
-    #[error("You specified device id ({0}) in Grouped, but only {1} AUTDs are connected.")]
+pub enum AUTDError {
+    #[error("Device id ({0}) is specified, but only {1} AUTDs are connected.")]
     GroupedOutOfRange(usize, usize),
 }

@@ -1,34 +1,40 @@
 /*
  * File: soem.rs
  * Project: src
- * Created Date: 28/05/2021
+ * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 21/07/2021
+ * Last Modified: 09/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Hapis Lab. All rights reserved.
  *
  */
 
 mod test_runner;
 mod tests;
 
-use autd3::prelude::*;
-use autd3_soem_link::{EthernetAdapters, SoemLink};
-use colored::*;
+use anyhow::Result;
+
 use std::io::{self, Write};
-use test_runner::run;
+
+use colored::*;
+
+use autd3::prelude::*;
+use autd3_link_soem::{Config, EthernetAdapters, SOEM};
 
 fn get_adapter() -> String {
     let adapters: EthernetAdapters = Default::default();
-    for (index, adapter) in adapters.into_iter().enumerate() {
-        println!("[{}]: {}", index, adapter);
-    }
+    adapters
+        .into_iter()
+        .enumerate()
+        .for_each(|(index, adapter)| {
+            println!("[{}]: {}", index, adapter);
+        });
 
     let i: usize;
-    let mut s = String::new();
     loop {
+        let mut s = String::new();
         print!("{}", "Choose number: ".green().bold());
         io::stdout().flush().unwrap();
 
@@ -45,22 +51,28 @@ fn get_adapter() -> String {
     adapter.name.to_string()
 }
 
-async fn main_task() {
-    let mut geometry = Geometry::new();
+fn main() -> Result<()> {
+    let mut geometry = GeometryBuilder::new().legacy_mode().build();
     geometry.add_device(Vector3::zeros(), Vector3::zeros());
+    // let mut geometry = GeometryBuilder::new().build();
+    // geometry.add_device(Vector3::zeros(), Vector3::zeros());
+    // geometry
+    //     .transducers_mut()
+    //     .for_each(|t| t.set_frequency(40e3).unwrap());
 
     let ifname = get_adapter();
-    let link = SoemLink::new(&ifname, geometry.num_devices() as u16, 1, |msg| {
+    let config = Config {
+        cycle_ticks: 2,
+        high_precision_timer: true,
+    };
+    let link = SOEM::new(&ifname, geometry.num_devices() as u16, config, |msg| {
         eprintln!("unrecoverable error occurred: {}", msg);
         std::process::exit(-1);
     });
 
     let autd = Controller::open(geometry, link).expect("Failed to open");
 
-    run(autd).await.expect("Some error occurred.");
-}
+    run!(autd);
 
-fn main() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(async { main_task().await });
+    Ok(())
 }

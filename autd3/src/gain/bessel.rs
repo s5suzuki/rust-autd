@@ -1,38 +1,34 @@
 /*
  * File: bessel.rs
  * Project: gain
- * Created Date: 28/05/2021
+ * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 16/12/2021
+ * Last Modified: 05/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Hapis Lab. All rights reserved.
  *
  */
 
-use std::f64::consts::PI;
-
-use anyhow::Result;
 use autd3_core::{
-    gain::Gain,
-    geometry::{Geometry, Matrix4x4, Vector3, Vector4},
-    hardware_defined::Drive,
+    gain::{Gain, GainProps, IGain},
+    geometry::{DriveData, Geometry, Transducer, UnitQuaternion, Vector3},
 };
+
 use autd3_traits::Gain;
 
-/// Gain to produce Bessel Beam
+/// Gain to produce single focal point
 #[derive(Gain)]
-pub struct Bessel {
-    data: Vec<Drive>,
-    built: bool,
-    duty: u8,
+pub struct Bessel<T: Transducer> {
+    props: GainProps<T>,
+    power: f64,
     pos: Vector3,
     dir: Vector3,
     theta: f64,
 }
 
-impl Bessel {
+impl<T: Transducer> Bessel<T> {
     /// constructor
     ///
     /// # Arguments
@@ -42,48 +38,46 @@ impl Bessel {
     /// * `theta` - Angle between the conical wavefront of the beam and the direction
     ///
     pub fn new(pos: Vector3, dir: Vector3, theta: f64) -> Self {
-        Self::with_duty(pos, dir, theta, 0xFF)
+        Self::with_duty(pos, dir, theta, 1.0)
     }
 
-    /// constructor with duty ratio
+    /// constructor with duty
     ///
     /// # Arguments
     ///
-    /// * `point` - Start point of the beam
-    /// * `dir` - Direction of the beam
-    /// * `theta` - Angle between the conical wavefront of the beam and the direction
-    /// * `duty` - Duty ratio
+    /// * `pos` - position of focal point
+    /// * `power` - normalized power (from 0 to 1)
     ///
-    pub fn with_duty(pos: Vector3, dir: Vector3, theta: f64, duty: u8) -> Self {
+    pub fn with_duty(pos: Vector3, dir: Vector3, theta: f64, power: f64) -> Self {
         Self {
-            data: vec![],
-            built: false,
-            duty,
+            props: GainProps::new(),
+            power,
             pos,
             dir,
             theta,
         }
     }
+}
 
-    #[allow(clippy::unnecessary_wraps)]
-    fn calc(&mut self, geometry: &Geometry) -> Result<()> {
+impl<T: Transducer> IGain<T> for Bessel<T> {
+    fn calc(&mut self, geometry: &Geometry<T>) -> anyhow::Result<()> {
         let dir = self.dir.normalize();
         let v = Vector3::new(dir.y, -dir.x, 0.);
         let theta_v = v.norm().asin();
-        let v = nalgebra::base::Unit::new_normalize(v);
-        let rot = Matrix4x4::from_axis_angle(&v, -theta_v);
+        let rot = if let Some(v) = v.try_normalize(1.0e-6) {
+            UnitQuaternion::from_scaled_axis(v * -theta_v)
+        } else {
+            UnitQuaternion::identity()
+        };
 
-        let duty = self.duty;
-        let wavenum = 2.0 * PI / geometry.wavelength;
-        for (trans, data) in geometry.transducers().zip(self.data.iter_mut()) {
-            let r = trans.position() - self.pos;
-            let r = Vector4::new(r.x, r.y, r.z, 1.0);
+        geometry.transducers().for_each(|tr| {
+            let r = tr.position() - self.pos;
+            let r = Vector3::new(r.x, r.y, r.z);
             let r = rot * r;
             let dist = self.theta.sin() * (r.x * r.x + r.y * r.y).sqrt() - self.theta.cos() * r.z;
-            let phase = wavenum * dist;
-            data.duty = duty;
-            data.phase = autd3_core::utils::to_phase(phase);
-        }
+            let phase = tr.align_phase_at(dist, geometry.sound_speed());
+            self.props.drives.set_drive(tr, phase, self.power);
+        });
         Ok(())
     }
 }

@@ -1,7 +1,7 @@
-# AUTD3 core
+# autd3-core
 
-This crate abstracts the functions defined in the AUTD3 firmware.
+This crate provides core functions of AUTD3.
 
 # Author
 
-Shun Suzuki, 2021
+Shun Suzuki, 2022

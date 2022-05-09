@@ -1,30 +1,20 @@
 [package]
 name = "autd3"
-version = "1.10.0"
+version = "2.0.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2021"
 
-license = "MIT"
+license-file = "LICENSE"
 description = "AUTD library for Rust."
 repository = "https://github.com/shinolab/rust-autd"
 readme = "../README.md"
 keywords = ["autd"]
-exclude = [
-    ".github/*",
-    "dist/*",
-]
- 
-[dependencies]
-anyhow = "1.0.44"
-nalgebra = "0.29.0"
-autd3-core = {path="../autd3-core", version="1.10.0"}
-autd3-traits = {path="../autd3-traits", version="1.10.0"}
-autd3-timer = {path="../autd3-timer", version="1.10.0"}
-num = "0.4.0"
-thiserror = "1.0.25"
-tokio = { version = "1.12.0", features = ["time"] }
 
-[features]
-phase_inverted = ["autd3-core/phase_inverted"]
-default = ["phase_inverted"]
-all = ["phase_inverted"]
+[dependencies]
+anyhow = "1.0.57"
+autd3-core = {path="../autd3-core"}
+autd3-traits = {path="../autd3-traits"}
+itertools = "0.10.3"
+nalgebra = "0.31.0"
+num = "0.4.0"
+thiserror = "1.0.31"

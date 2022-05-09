@@ -1,7 +1,7 @@
-# AUTD3 traits
+# autd3-traits
 
 This crate provides Gain and Modulation derive macros.
 
 # Author
 
-Shun Suzuki, 2021
+Shun Suzuki, 2022

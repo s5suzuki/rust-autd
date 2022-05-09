@@ -1,34 +1,15 @@
 /*
  * File: utils.rs
  * Project: src
- * Created Date: 27/05/2021
+ * Created Date: 06/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 16/12/2021
+ * Last Modified: 06/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Hapis Lab. All rights reserved.
  *
  */
-
-use std::f64::consts::PI;
-
-/// Adjust amplitude to duty ratio of Pulse Width Modulation.
-pub fn to_duty(amp: f64) -> u8 {
-    let d = amp.asin() / PI; // duty (0 ~ 0.5)
-    (510.0 * d) as u8
-}
-
-#[cfg(feature = "phase_inverted")]
-pub fn to_phase(phase: f64) -> u8 {
-    ((((phase / (2.0 * PI) + 0.5) * 256.0).round() as i32) & 0xFF) as u8
-}
-
-#[cfg(not(feature = "phase_inverted"))]
-pub fn to_phase(phase: f64) -> u8 {
-    let phase = ((((phase / (2.0 * PI) + 0.5) * 256.0).round() as i32) & 0xFF) as u8;
-    0xFF - phase
-}
 
 #[allow(clippy::excessive_precision, clippy::unreadable_literal)]
 static DIR_COEF_A: &[f64] = &[

@@ -1,35 +1,33 @@
 /*
  * File: twincat.rs
  * Project: src
- * Created Date: 31/05/2021
+ * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2021
+ * Last Modified: 09/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2021 Hapis Lab. All rights reserved.
- * 
+ * Copyright (c) 2022 Hapis Lab. All rights reserved.
+ *
  */
-
 
 mod test_runner;
 mod tests;
 
-use autd3::prelude::*;
-use autd3_twincat_link::TwinCatLink;
-use test_runner::run;
+use anyhow::Result;
 
-async fn main_task() {
-    let mut geometry = Geometry::new();
+use autd3::prelude::*;
+use autd3_link_twincat::TwinCAT;
+
+fn main() -> Result<()> {
+    let mut geometry = GeometryBuilder::new().legacy_mode().build();
     geometry.add_device(Vector3::zeros(), Vector3::zeros());
 
-    let link = TwinCatLink::new();
+    let link = TwinCAT::new(2);
+
     let autd = Controller::open(geometry, link).expect("Failed to open");
 
-    run(autd).await.expect("Some error occurred.");
-}
+    run!(autd);
 
-fn main() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(async { main_task().await });
+    Ok(())
 }

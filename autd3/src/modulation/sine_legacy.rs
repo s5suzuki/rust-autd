@@ -1,32 +1,29 @@
 /*
  * File: sine_legacy.rs
  * Project: modulation
- * Created Date: 28/07/2021
+ * Created Date: 05/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 16/12/2021
+ * Last Modified: 05/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Hapis Lab. All rights reserved.
  *
  */
 
 use std::f64::consts::PI;
 
 use anyhow::Result;
-use autd3_core::{hardware_defined, modulation::Modulation};
+use autd3_core::modulation::{ModProps, Modulation};
 use autd3_traits::Modulation;
 
 /// Sine wave modulation in ultrasound amplitude
 #[derive(Modulation)]
 pub struct SineLegacy {
-    buffer: Vec<u8>,
+    props: ModProps,
     freq: f64,
     amp: f64,
     offset: f64,
-    sampling_freq_div: usize,
-    built: bool,
-    sent: usize,
 }
 
 impl SineLegacy {
@@ -51,13 +48,10 @@ impl SineLegacy {
     ///
     pub fn with_params(freq: f64, amp: f64, offset: f64) -> Self {
         Self {
-            buffer: vec![],
+            props: ModProps::new(),
             freq,
             amp,
             offset,
-            sampling_freq_div: 10,
-            built: false,
-            sent: 0,
         }
     }
 
@@ -65,22 +59,20 @@ impl SineLegacy {
     fn calc(&mut self) -> Result<()> {
         let sf = self.sampling_freq();
 
-        let freq = self.freq.clamp(
-            autd3_core::hardware_defined::MOD_SAMPLING_FREQ_BASE
-                / autd3_core::hardware_defined::MOD_SAMPLING_FREQ_DIV_MAX as f64,
-            sf / 2.0,
-        );
+        let freq = self
+            .freq
+            .clamp(autd3_core::FPGA_CLK_FREQ as f64 / u32::MAX as f64, sf / 2.0);
 
         let n = (1.0 / freq * sf).round() as usize;
 
-        self.buffer.resize(n, 0);
+        self.props.buffer.resize(n, 0);
 
-        for i in 0..n {
+        self.props.buffer.iter_mut().enumerate().for_each(|(i, m)| {
             let amp = self.amp / 2.0 * (2.0 * PI * i as f64 / n as f64).sin() + self.offset;
             let amp = amp.clamp(0.0, 1.0);
             let duty = amp.asin() * 2.0 / PI * 255.0;
-            self.buffer[i] = duty as u8;
-        }
+            *m = duty as u8
+        });
 
         Ok(())
     }

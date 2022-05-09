@@ -1,52 +1,66 @@
 /*
- * File: stm.rs
+ * File: seq.rs
  * Project: tests
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 16/12/2021
+ * Last Modified: 08/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
  *
  */
 
-use anyhow::Result;
-use autd3::prelude::*;
-use std::io;
+#[macro_export]
+macro_rules! point_stm {
+    ($autd:ident) => {{
+        use autd3::prelude::*;
 
-pub async fn stm<L: Link>(mut autd: Controller<L>) -> Result<Controller<L>> {
-    autd.silent_mode = false;
+        let silencer_config = SilencerConfig::none();
+        $autd.config_silencer(silencer_config)?;
 
-    let mut m = Static::new();
-    autd.send_header(&mut m).await?;
+        let center = $autd.geometry().center() + Vector3::new(0., 0., 150.0);
 
-    let mut stm = autd.stm();
+        let mut stm = PointSTM::new();
+        let point_num = 200;
+        let radius = 30.0;
+        for i in 0..point_num {
+            let theta = 2.0 * std::f64::consts::PI * i as f64 / point_num as f64;
+            let p = radius * Vector3::new(theta.cos(), theta.sin(), 0.0);
+            stm.add_point(center + p, 0)?;
+        }
+        stm.set_freq(1.0);
 
-    let center = Vector3::new(
-        TRANS_SPACING_MM * ((NUM_TRANS_X - 1) as f64 / 2.0),
-        TRANS_SPACING_MM * ((NUM_TRANS_Y - 1) as f64 / 2.0),
-        150.0,
-    );
-    let point_num = 100;
-    for i in 0..point_num {
-        let radius = 20.0;
-        let theta = 2.0 * std::f64::consts::PI * i as f64 / point_num as f64;
-        let pos = radius * Vector3::new(theta.cos(), theta.sin(), 0.0);
-        let mut g = Focus::new(center + pos);
-        stm.add(&mut g)?;
-    }
+        let mut m = Static::new(0xFF);
 
-    let timer = stm.start(0.5)?; // 0.5 Hz
+        $autd.send(&mut m).send(&mut stm)?;
+    }};
+}
 
-    println!("press any key to stop STM...");
-    let mut _s = String::new();
-    io::stdin().read_line(&mut _s)?;
+#[macro_export]
+macro_rules! gain_stm {
+    ($autd:ident) => {{
+        use autd3::prelude::*;
 
-    let mut stm = timer.stop()?;
-    stm.finish();
+        let silencer_config = SilencerConfig::none();
+        $autd.config_silencer(silencer_config)?;
 
-    let autd = stm.controller();
+        let center = $autd.geometry().center() + Vector3::new(0., 0., 150.0);
 
-    Ok(autd)
+        let mut stm = GainSTM::new();
+        let point_num = 200;
+        for i in 0..point_num {
+            let radius = 30.0;
+            let theta = 2.0 * std::f64::consts::PI * i as f64 / point_num as f64;
+            let p = radius * Vector3::new(theta.cos(), theta.sin(), 0.0);
+
+            let g = Focus::new(center + p);
+            stm.add_gain(g, $autd.geometry())?;
+        }
+        stm.set_freq(1.0);
+
+        let mut m = Static::new(0xFF);
+
+        $autd.send(&mut m).send(&mut stm)?;
+    }};
 }
