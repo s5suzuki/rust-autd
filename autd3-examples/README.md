@@ -13,6 +13,12 @@ cargo run --release --features soem --bin soem
 cargo run --release --features twincat --bin twincat
 ```
 
+## Emulator
+
+```
+cargo run --release --features emulator --bin emulator
+```
+
 # Author
 
 Shun Suzuki, 2022
