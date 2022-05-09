@@ -1,0 +1,16 @@
+[package]
+name = "autd3-link-emulator"
+version = "2.0.0"
+authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
+edition = "2021"
+
+license-file = "LICENSE"
+description = "Link for autd-emulator"
+repository = "https://github.com/shinolab/rust-autd"
+readme = "README.md"
+keywords = ["autd"]
+
+[dependencies]
+anyhow = "1.0.57"
+autd3-core = {path="../autd3-core"}
+thiserror = "1.0.30"

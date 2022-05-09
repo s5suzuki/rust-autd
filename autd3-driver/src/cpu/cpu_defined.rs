@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 05/05/2022
+ * Last Modified: 09/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -15,7 +15,9 @@ pub const MSG_CLEAR: u8 = 0x00;
 pub const MSG_RD_CPU_VERSION: u8 = 0x01;
 pub const MSG_RD_FPGA_VERSION: u8 = 0x03;
 pub const MSG_RD_FPGA_FUNCTION: u8 = 0x04;
-pub const MSG_NORMAL_BASE: u8 = 0x05;
+pub const MSG_NORMAL_BEGINNING: u8 = 0x05;
+pub const MSG_NORMAL_END: u8 = 0xF0;
+pub const MSG_EMU_GEOMETRY_SET: u8 = 0xFF;
 
 pub const MOD_HEAD_DATA_SIZE: usize = 120;
 pub const MOD_BODY_DATA_SIZE: usize = 124;

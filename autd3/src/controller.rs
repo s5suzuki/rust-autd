@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 06/05/2022
+ * Last Modified: 09/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -24,13 +24,13 @@ use autd3_core::{
     interface::{DatagramBody, DatagramHeader, Empty, Filled, Sendable},
     is_msg_processed,
     link::Link,
-    FirmwareInfo, RxDatagram, TxDatagram, EC_DEVICE_PER_FRAME, EC_TRAFFIC_DELAY, MSG_NORMAL_BASE,
-    NUM_TRANS_IN_UNIT,
+    FirmwareInfo, RxDatagram, TxDatagram, EC_DEVICE_PER_FRAME, EC_TRAFFIC_DELAY,
+    MSG_NORMAL_BEGINNING, MSG_NORMAL_END, NUM_TRANS_IN_UNIT,
 };
 
 use crate::{prelude::Null, SilencerConfig};
 
-static MSG_ID: AtomicU8 = AtomicU8::new(MSG_NORMAL_BASE);
+static MSG_ID: AtomicU8 = AtomicU8::new(MSG_NORMAL_BEGINNING);
 
 pub struct Sender<'a, 'b, L: Link, T: Transducer, S: Sendable<T>, H, B> {
     cnt: &'a mut Controller<L, T>,
@@ -344,8 +344,8 @@ impl<L: Link, T: Transducer> Controller<L, T> {
     pub fn get_id(&self) -> u8 {
         MSG_ID.fetch_add(1, atomic::Ordering::SeqCst);
         let _ = MSG_ID.compare_exchange(
-            0xFF,
-            MSG_NORMAL_BASE,
+            MSG_NORMAL_END,
+            MSG_NORMAL_BEGINNING,
             atomic::Ordering::SeqCst,
             atomic::Ordering::SeqCst,
         );
