@@ -14,27 +14,32 @@ jobs:
       run: git submodule update --init --force --recursive
     - name: publish
       run: |
-        cd autd3-timer
-        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
-        cd .. && sleep 60
         cd autd3-traits
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
+        cd ..
+        cd autd3-driver
+        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
+        cd autd3-firmware-emulator
+        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
+        cd ..
         cd autd3-core
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd .. && sleep 60
         cd autd3
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
-        cd .. && sleep 60
-        cd autd3-soem-link
+        cd ..
+        cd autd3-link-soem
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
-        cd .. && sleep 60
-        cd autd3-twincat-link
+        cd ..
+        cd autd3-link-twincat
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
-        cd .. && sleep 60
-        cd autd3-emulator-link
+        cd ..
+        cd autd3-link-debug
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
-        cd .. && sleep 60
-        cd autd3-holo-gain
+        cd ..
+        cd autd3-link-emulator
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
-        cd .. && sleep 60
+        cd ..
+        cd autd3-gain-holo
+        cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
