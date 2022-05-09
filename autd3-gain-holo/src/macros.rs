@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 06/05/2022
+ * Last Modified: 09/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -17,6 +17,8 @@ use autd3_core::{
     utils::directivity_t4010a1 as directivity,
     NUM_TRANS_IN_UNIT,
 };
+#[allow(unused)]
+use nalgebra::ComplexField;
 
 pub fn propagate(
     source_pos: &Vector3,
