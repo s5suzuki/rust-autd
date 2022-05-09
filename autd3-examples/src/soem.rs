@@ -52,17 +52,13 @@ fn get_adapter() -> String {
 }
 
 fn main() -> Result<()> {
-    // let mut geometry = GeometryBuilder::new().legacy_mode().build();
+    let mut geometry = GeometryBuilder::new().legacy_mode().build();
+    geometry.add_device(Vector3::zeros(), Vector3::zeros());
+    // let mut geometry = GeometryBuilder::new().build();
     // geometry.add_device(Vector3::zeros(), Vector3::zeros());
-    let mut geometry = GeometryBuilder::new().build();
-    geometry.add_device(Vector3::zeros(), Vector3::zeros());
-    geometry.add_device(Vector3::zeros(), Vector3::zeros());
-    geometry.add_device(Vector3::zeros(), Vector3::zeros());
     // geometry
     //     .transducers_mut()
     //     .for_each(|t| t.set_frequency(40e3).unwrap());
-    geometry.devices_mut()[0].transducers_mut()[17].set_cycle(4095)?;
-    geometry.devices_mut()[2].transducers_mut()[17].set_cycle(4095)?;
 
     let ifname = get_adapter();
     let config = Config {
