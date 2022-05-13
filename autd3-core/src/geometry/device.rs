@@ -4,7 +4,7 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 08/05/2022
+ * Last Modified: 13/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -39,6 +39,11 @@ impl<T: Transducer> Device<T> {
 
     pub fn transducers_mut(&mut self) -> &mut [T] {
         &mut self.transducers
+    }
+
+    pub fn center(&self) -> Vector3 {
+        let sum: Vector3 = self.transducers().iter().map(|t| t.position()).sum();
+        sum / self.transducers.len() as f64
     }
 }
 

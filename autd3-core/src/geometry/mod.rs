@@ -4,7 +4,7 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 09/05/2022
+ * Last Modified: 13/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -66,8 +66,8 @@ impl<T: Transducer> Geometry<T> {
     }
 
     pub fn center(&self) -> Vector3 {
-        let sum: Vector3 = self.transducers().map(|t| t.position()).sum();
-        sum / self.num_transducers() as f64
+        let sum: Vector3 = self.devices().iter().map(|d| d.center()).sum();
+        sum / self.devices.len() as f64
     }
 
     pub fn sound_speed(&self) -> f64 {

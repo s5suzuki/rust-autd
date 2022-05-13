@@ -4,7 +4,7 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 08/05/2022
+ * Last Modified: 13/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -118,18 +118,21 @@ impl Transducer for NormalTransducer {
         FPGA_CLK_FREQ as f64 / self.cycle as f64
     }
 
-    fn pack(
-        msg_id: u8,
+    fn pack_head(msg_id: u8, tx: &mut autd3_driver::TxDatagram) {
+        autd3_driver::normal_head(msg_id, tx);
+    }
+
+    fn pack_body(
         phase_sent: &mut bool,
         duty_sent: &mut bool,
         drives: &Self::D,
         tx: &mut autd3_driver::TxDatagram,
     ) -> anyhow::Result<()> {
         if !*phase_sent {
-            autd3_driver::normal_phase(msg_id, &drives.phases, tx)?;
+            autd3_driver::normal_phase_body(&drives.phases, tx)?;
             *phase_sent = true;
         } else {
-            autd3_driver::normal_duty(msg_id, &drives.duties, tx)?;
+            autd3_driver::normal_duty_body(&drives.duties, tx)?;
             *duty_sent = true;
         }
         Ok(())

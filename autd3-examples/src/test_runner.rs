@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 09/05/2022
+ * Last Modified: 13/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -38,6 +38,9 @@ macro_rules! run {
             println!("[2]: Multiple foci Test");
             println!("[3]: PointSTM Test");
             println!("[4]: GainSTM Test");
+            if autd.geometry().num_devices() == 2 {
+                println!("[5]: Grouped Gain Test");
+            }
             println!("[9]: Transducer Test");
             println!("[Others]: Finish");
             print!("{}", "Choose number: ".green().bold());
@@ -51,6 +54,7 @@ macro_rules! run {
                 Ok(2) => holo!(autd),
                 Ok(3) => point_stm!(autd),
                 Ok(4) => gain_stm!(autd),
+                Ok(5) => grouped!(autd),
                 Ok(9) => trans_test!(autd),
                 _ => break,
             };

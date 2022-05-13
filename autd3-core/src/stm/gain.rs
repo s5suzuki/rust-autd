@@ -4,7 +4,7 @@
  * Created Date: 05/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/05/2022
+ * Last Modified: 13/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -77,6 +77,8 @@ impl DatagramBody<LegacyTransducer> for GainSTM<LegacyTransducer> {
         _geometry: &Geometry<LegacyTransducer>,
         tx: &mut TxDatagram,
     ) -> Result<()> {
+        autd3_driver::gain_stm_legacy_head(msg_id, tx);
+
         if DatagramBody::<LegacyTransducer>::is_finished(self) {
             return Ok(());
         }
@@ -85,8 +87,7 @@ impl DatagramBody<LegacyTransducer> for GainSTM<LegacyTransducer> {
         let is_last_frame = self.sent + 1 == self.gains.len() + 1;
 
         if is_first_frame {
-            autd3_driver::gain_stm_legacy(
-                msg_id,
+            autd3_driver::gain_stm_legacy_body(
                 &[],
                 is_first_frame,
                 self.sample_freq_div,
@@ -97,8 +98,7 @@ impl DatagramBody<LegacyTransducer> for GainSTM<LegacyTransducer> {
             return Ok(());
         }
 
-        autd3_driver::gain_stm_legacy(
-            msg_id,
+        autd3_driver::gain_stm_legacy_body(
             &self.gains[self.sent - 1].data,
             is_first_frame,
             self.sample_freq_div,
@@ -127,6 +127,8 @@ impl DatagramBody<NormalTransducer> for GainSTM<NormalTransducer> {
         _geometry: &Geometry<NormalTransducer>,
         tx: &mut TxDatagram,
     ) -> Result<()> {
+        autd3_driver::gain_stm_normal_head(msg_id, tx);
+
         if DatagramBody::<NormalTransducer>::is_finished(self) {
             return Ok(());
         }
@@ -135,8 +137,7 @@ impl DatagramBody<NormalTransducer> for GainSTM<NormalTransducer> {
         let is_last_frame = self.sent + 1 == self.gains.len() * 2 + 1;
 
         if is_first_frame {
-            autd3_driver::gain_stm_normal_phase(
-                msg_id,
+            autd3_driver::gain_stm_normal_phase_body(
                 &[],
                 is_first_frame,
                 self.sample_freq_div,
@@ -147,25 +148,22 @@ impl DatagramBody<NormalTransducer> for GainSTM<NormalTransducer> {
         }
 
         if !self.next_duty {
-            autd3_driver::gain_stm_normal_phase(
-                msg_id,
+            autd3_driver::gain_stm_normal_phase_body(
                 &self.gains[(self.sent - 1) / 2].phases,
                 is_first_frame,
                 self.sample_freq_div,
                 tx,
             )?;
-            self.next_duty = true;
         } else {
-            autd3_driver::gain_stm_normal_duty(
-                msg_id,
+            autd3_driver::gain_stm_normal_duty_body(
                 &self.gains[(self.sent - 1) / 2].duties,
                 is_first_frame,
                 self.sample_freq_div,
                 is_last_frame,
                 tx,
             )?;
-            self.next_duty = false;
         }
+        self.next_duty = !self.next_duty;
 
         self.sent += 1;
 

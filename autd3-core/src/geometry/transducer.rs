@@ -4,7 +4,7 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 08/05/2022
+ * Last Modified: 13/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -44,8 +44,8 @@ pub trait Transducer: Sized {
     fn frequency(&self) -> f64;
     fn wavelength(&self, sound_speed: f64) -> f64;
     fn wavenumber(&self, sound_speed: f64) -> f64;
-    fn pack(
-        msg_id: u8,
+    fn pack_head(msg_id: u8, tx: &mut TxDatagram);
+    fn pack_body(
         phase_sent: &mut bool,
         duty_sent: &mut bool,
         drives: &Self::D,

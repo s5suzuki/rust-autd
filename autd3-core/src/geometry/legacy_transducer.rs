@@ -4,7 +4,7 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 08/05/2022
+ * Last Modified: 13/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -117,14 +117,17 @@ impl Transducer for LegacyTransducer {
         2.0 * PI * 40e3 / (sound_speed * 1e3)
     }
 
-    fn pack(
-        msg_id: u8,
+    fn pack_head(msg_id: u8, tx: &mut autd3_driver::TxDatagram) {
+        autd3_driver::normal_legacy_head(msg_id, tx);
+    }
+
+    fn pack_body(
         phase_sent: &mut bool,
         duty_sent: &mut bool,
         drives: &Self::D,
         tx: &mut autd3_driver::TxDatagram,
     ) -> anyhow::Result<()> {
-        autd3_driver::normal_legacy(msg_id, &drives.data, tx)?;
+        autd3_driver::normal_legacy_body(&drives.data, tx)?;
         *phase_sent = true;
         *duty_sent = true;
         Ok(())

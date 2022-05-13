@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/05/2022
+ * Last Modified: 13/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -120,7 +120,16 @@ pub fn config_silencer(msg_id: u8, cycle: u16, step: u16, tx: &mut TxDatagram) -
     Ok(())
 }
 
-pub fn normal_legacy(msg_id: u8, drive: &[LegacyDrive], tx: &mut TxDatagram) -> Result<()> {
+pub fn normal_legacy_head(msg_id: u8, tx: &mut TxDatagram) {
+    tx.header_mut().msg_id = msg_id;
+
+    tx.header_mut()
+        .fpga_flag
+        .set(FPGAControlFlags::LEGACY_MODE, true);
+    tx.header_mut().fpga_flag.remove(FPGAControlFlags::STM_MODE);
+}
+
+pub fn normal_legacy_body(drive: &[LegacyDrive], tx: &mut TxDatagram) -> Result<()> {
     if drive.len() / NUM_TRANS_IN_UNIT != tx.body().len() {
         return Err(CPUError::DeviceNumberNotCorrect {
             a: tx.body().len(),
@@ -128,13 +137,6 @@ pub fn normal_legacy(msg_id: u8, drive: &[LegacyDrive], tx: &mut TxDatagram) -> 
         }
         .into());
     }
-
-    tx.header_mut().msg_id = msg_id;
-
-    tx.header_mut()
-        .fpga_flag
-        .set(FPGAControlFlags::LEGACY_MODE, true);
-    tx.header_mut().fpga_flag.remove(FPGAControlFlags::STM_MODE);
 
     tx.body_mut()
         .iter_mut()
@@ -146,7 +148,16 @@ pub fn normal_legacy(msg_id: u8, drive: &[LegacyDrive], tx: &mut TxDatagram) -> 
     Ok(())
 }
 
-pub fn normal_duty(msg_id: u8, drive: &[Duty], tx: &mut TxDatagram) -> Result<()> {
+pub fn normal_head(msg_id: u8, tx: &mut TxDatagram) {
+    tx.header_mut().msg_id = msg_id;
+
+    tx.header_mut()
+        .fpga_flag
+        .remove(FPGAControlFlags::LEGACY_MODE);
+    tx.header_mut().fpga_flag.remove(FPGAControlFlags::STM_MODE);
+}
+
+pub fn normal_duty_body(drive: &[Duty], tx: &mut TxDatagram) -> Result<()> {
     if drive.len() / NUM_TRANS_IN_UNIT != tx.body().len() {
         return Err(CPUError::DeviceNumberNotCorrect {
             a: tx.body().len(),
@@ -154,13 +165,6 @@ pub fn normal_duty(msg_id: u8, drive: &[Duty], tx: &mut TxDatagram) -> Result<()
         }
         .into());
     }
-
-    tx.header_mut().msg_id = msg_id;
-
-    tx.header_mut()
-        .fpga_flag
-        .remove(FPGAControlFlags::LEGACY_MODE);
-    tx.header_mut().fpga_flag.remove(FPGAControlFlags::STM_MODE);
 
     tx.header_mut().cpu_flag.set(CPUControlFlags::IS_DUTY, true);
 
@@ -174,7 +178,7 @@ pub fn normal_duty(msg_id: u8, drive: &[Duty], tx: &mut TxDatagram) -> Result<()
     Ok(())
 }
 
-pub fn normal_phase(msg_id: u8, drive: &[Phase], tx: &mut TxDatagram) -> Result<()> {
+pub fn normal_phase_body(drive: &[Phase], tx: &mut TxDatagram) -> Result<()> {
     if drive.len() / NUM_TRANS_IN_UNIT != tx.body().len() {
         return Err(CPUError::DeviceNumberNotCorrect {
             a: tx.body().len(),
@@ -182,13 +186,6 @@ pub fn normal_phase(msg_id: u8, drive: &[Phase], tx: &mut TxDatagram) -> Result<
         }
         .into());
     }
-
-    tx.header_mut().msg_id = msg_id;
-
-    tx.header_mut()
-        .fpga_flag
-        .remove(FPGAControlFlags::LEGACY_MODE);
-    tx.header_mut().fpga_flag.remove(FPGAControlFlags::STM_MODE);
 
     tx.header_mut().cpu_flag.remove(CPUControlFlags::IS_DUTY);
 
@@ -202,15 +199,7 @@ pub fn normal_phase(msg_id: u8, drive: &[Phase], tx: &mut TxDatagram) -> Result<
     Ok(())
 }
 
-pub fn point_stm(
-    msg_id: u8,
-    points: &[Vec<SeqFocus>],
-    is_first_frame: bool,
-    freq_div: u32,
-    sound_speed: f64,
-    is_last_frame: bool,
-    tx: &mut TxDatagram,
-) -> Result<()> {
+pub fn point_stm_head(msg_id: u8, tx: &mut TxDatagram) {
     tx.header_mut().msg_id = msg_id;
 
     tx.header_mut()
@@ -219,7 +208,16 @@ pub fn point_stm(
     tx.header_mut()
         .fpga_flag
         .remove(FPGAControlFlags::STM_GAIN_MODE);
+}
 
+pub fn point_stm_body(
+    points: &[Vec<SeqFocus>],
+    is_first_frame: bool,
+    freq_div: u32,
+    sound_speed: f64,
+    is_last_frame: bool,
+    tx: &mut TxDatagram,
+) -> Result<()> {
     if is_first_frame {
         for s in points {
             if s.len() > POINT_STM_HEAD_DATA_SIZE {
@@ -266,14 +264,7 @@ pub fn point_stm(
     Ok(())
 }
 
-pub fn gain_stm_legacy(
-    msg_id: u8,
-    gain: &[LegacyDrive],
-    is_first_frame: bool,
-    freq_div: u32,
-    is_last_frame: bool,
-    tx: &mut TxDatagram,
-) -> Result<()> {
+pub fn gain_stm_legacy_head(msg_id: u8, tx: &mut TxDatagram) {
     tx.header_mut().msg_id = msg_id;
 
     tx.header_mut()
@@ -285,7 +276,15 @@ pub fn gain_stm_legacy(
     tx.header_mut()
         .fpga_flag
         .set(FPGAControlFlags::STM_GAIN_MODE, true);
+}
 
+pub fn gain_stm_legacy_body(
+    gain: &[LegacyDrive],
+    is_first_frame: bool,
+    freq_div: u32,
+    is_last_frame: bool,
+    tx: &mut TxDatagram,
+) -> Result<()> {
     if is_first_frame {
         if freq_div < STM_SAMPLING_FREQ_DIV_MIN {
             return Err(FPGAError::STMFreqDivOutOfRange(freq_div).into());
@@ -316,16 +315,8 @@ pub fn gain_stm_legacy(
     Ok(())
 }
 
-pub fn gain_stm_normal_phase(
-    msg_id: u8,
-    phase: &[Phase],
-    is_first_frame: bool,
-    freq_div: u32,
-    tx: &mut TxDatagram,
-) -> Result<()> {
+pub fn gain_stm_normal_head(msg_id: u8, tx: &mut TxDatagram) {
     tx.header_mut().msg_id = msg_id;
-
-    tx.header_mut().cpu_flag.remove(CPUControlFlags::IS_DUTY);
 
     tx.header_mut()
         .fpga_flag
@@ -336,6 +327,15 @@ pub fn gain_stm_normal_phase(
     tx.header_mut()
         .fpga_flag
         .set(FPGAControlFlags::STM_GAIN_MODE, true);
+}
+
+pub fn gain_stm_normal_phase_body(
+    phase: &[Phase],
+    is_first_frame: bool,
+    freq_div: u32,
+    tx: &mut TxDatagram,
+) -> Result<()> {
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::IS_DUTY);
 
     if is_first_frame {
         if freq_div < STM_SAMPLING_FREQ_DIV_MIN {
@@ -361,27 +361,14 @@ pub fn gain_stm_normal_phase(
     Ok(())
 }
 
-pub fn gain_stm_normal_duty(
-    msg_id: u8,
+pub fn gain_stm_normal_duty_body(
     duty: &[Duty],
     is_first_frame: bool,
     freq_div: u32,
     is_last_frame: bool,
     tx: &mut TxDatagram,
 ) -> Result<()> {
-    tx.header_mut().msg_id = msg_id;
-
     tx.header_mut().cpu_flag.set(CPUControlFlags::IS_DUTY, true);
-
-    tx.header_mut()
-        .fpga_flag
-        .remove(FPGAControlFlags::LEGACY_MODE);
-    tx.header_mut()
-        .fpga_flag
-        .set(FPGAControlFlags::STM_MODE, true);
-    tx.header_mut()
-        .fpga_flag
-        .set(FPGAControlFlags::STM_GAIN_MODE, true);
 
     if is_first_frame {
         if freq_div < STM_SAMPLING_FREQ_DIV_MIN {

@@ -4,7 +4,7 @@
  * Created Date: 28/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 06/05/2022
+ * Last Modified: 13/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -172,11 +172,12 @@ fn impl_gain_macro(ast: syn::DeriveInput) -> TokenStream {
                 geometry: &autd3_core::geometry::Geometry<T>,
                 tx: &mut autd3_core::TxDatagram,
             ) -> anyhow::Result<()> {
+                self.props.pack_head(msg_id, tx);
                 if self.is_finished() {
                     return Ok(());
                 }
                 self.build(geometry)?;
-                self.props.pack(msg_id, tx)?;
+                self.props.pack_body(tx)?;
                 Ok(())
             }
 

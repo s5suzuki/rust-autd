@@ -4,7 +4,7 @@
  * Created Date: 05/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 05/05/2022
+ * Last Modified: 13/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -24,12 +24,12 @@ use crate::error::AUTDError;
 
 /// Gain to produce single focal point
 #[derive(Gain)]
-pub struct Grouped<T: Transducer> {
+pub struct Grouped<'a, T: Transducer> {
     props: GainProps<T>,
-    gain_map: HashMap<usize, Box<dyn Gain<T>>>,
+    gain_map: HashMap<usize, Box<dyn 'a + Gain<T>>>,
 }
 
-impl<T: Transducer> Grouped<T> {
+impl<'a, T: Transducer> Grouped<'a, T> {
     /// constructor
     pub fn new() -> Self {
         Self {
@@ -37,11 +37,15 @@ impl<T: Transducer> Grouped<T> {
             gain_map: HashMap::new(),
         }
     }
+
+    pub fn add<G: 'a + Gain<T>>(&mut self, id: usize, gain: G) {
+        self.gain_map.insert(id, Box::new(gain));
+    }
 }
 
-impl<T: Transducer> IGain<T> for Grouped<T>
+impl<'a, T: Transducer> IGain<T> for Grouped<'a, T>
 where
-    Grouped<T>: Gain<T>,
+    Grouped<'a, T>: Gain<T>,
 {
     fn calc(&mut self, geometry: &Geometry<T>) -> anyhow::Result<()> {
         for gain in self.gain_map.values_mut() {
@@ -60,7 +64,7 @@ where
     }
 }
 
-impl<T: Transducer> Default for Grouped<T> {
+impl<'a, T: Transducer> Default for Grouped<'a, T> {
     fn default() -> Self {
         Self::new()
     }

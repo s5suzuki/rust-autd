@@ -4,7 +4,7 @@
  * Created Date: 05/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/05/2022
+ * Last Modified: 13/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -87,6 +87,8 @@ impl<T: Transducer> DatagramBody<T> for PointSTM {
     }
 
     fn pack(&mut self, msg_id: u8, geometry: &Geometry<T>, tx: &mut TxDatagram) -> Result<()> {
+        autd3_driver::point_stm_head(msg_id, tx);
+
         if DatagramBody::<T>::is_finished(self) {
             return Ok(());
         }
@@ -114,8 +116,7 @@ impl<T: Transducer> DatagramBody<T> for PointSTM {
             })
             .collect();
 
-        autd3_driver::point_stm(
-            msg_id,
+        autd3_driver::point_stm_body(
             &points,
             is_first_frame,
             self.sample_freq_div,

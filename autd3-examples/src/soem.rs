@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 09/05/2022
+ * Last Modified: 13/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -54,9 +54,6 @@ fn get_adapter() -> String {
 fn main() -> Result<()> {
     let mut geometry = GeometryBuilder::new().legacy_mode().build();
     geometry.add_device(Vector3::zeros(), Vector3::zeros());
-    geometry.add_device(Vector3::zeros(), Vector3::zeros());
-    geometry.add_device(Vector3::zeros(), Vector3::zeros());
-    geometry.add_device(Vector3::zeros(), Vector3::zeros());
     // let mut geometry = GeometryBuilder::new().build();
     // geometry.add_device(Vector3::zeros(), Vector3::zeros());
     // geometry
@@ -66,7 +63,7 @@ fn main() -> Result<()> {
     let ifname = get_adapter();
     let config = Config {
         cycle_ticks: 4,
-        high_precision_timer: false,
+        high_precision_timer: true,
     };
     let link = SOEM::new(&ifname, geometry.num_devices() as u16, config, |msg| {
         eprintln!("unrecoverable error occurred: {}", msg);
