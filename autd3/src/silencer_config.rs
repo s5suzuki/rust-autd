@@ -4,7 +4,7 @@
  * Created Date: 28/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 05/05/2022
+ * Last Modified: 17/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -22,7 +22,7 @@ impl SilencerConfig {
     }
 
     pub fn none() -> Self {
-        Self::new(4096, 4096)
+        Self::new(0xFFFF, 4096)
     }
 }
 

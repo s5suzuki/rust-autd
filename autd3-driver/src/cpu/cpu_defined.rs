@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 09/05/2022
+ * Last Modified: 17/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -15,8 +15,8 @@ pub const MSG_CLEAR: u8 = 0x00;
 pub const MSG_RD_CPU_VERSION: u8 = 0x01;
 pub const MSG_RD_FPGA_VERSION: u8 = 0x03;
 pub const MSG_RD_FPGA_FUNCTION: u8 = 0x04;
-pub const MSG_NORMAL_BEGINNING: u8 = 0x05;
-pub const MSG_NORMAL_END: u8 = 0xF0;
+pub const MSG_BEGIN: u8 = 0x05;
+pub const MSG_END: u8 = 0xF0;
 pub const MSG_EMU_GEOMETRY_SET: u8 = 0xFF;
 
 pub const MOD_HEAD_DATA_SIZE: usize = 120;
@@ -28,13 +28,16 @@ pub const POINT_STM_BODY_DATA_SIZE: usize = 62;
 bitflags::bitflags! {
     pub struct CPUControlFlags : u8 {
         const NONE            = 0;
-        const MOD_BEGIN       = 1 << 0;
-        const MOD_END         = 1 << 1;
-        const STM_BEGIN       = 1 << 2;
-        const STM_END         = 1 << 3;
-        const IS_DUTY         = 1 << 4;
-        const CONFIG_SILENCER = 1 << 5;
-        const READS_FPGA_INFO = 1 << 6;
-        const DO_SYNC         = 1 << 7;
+        const MOD             = 1 << 0;
+        const MOD_BEGIN       = 1 << 1;
+        const MOD_END         = 1 << 2;
+        const CONFIG_EN_N     = 1 << 0;
+        const CONFIG_SILENCER = 1 << 1;
+        const CONFIG_SYNC     = 1 << 2;
+        const WRITE_BODY      = 1 << 3;
+        const STM_BEGIN       = 1 << 4;
+        const STM_END         = 1 << 5;
+        const IS_DUTY         = 1 << 6;
+        const READS_FPGA_INFO = 1 << 7;
     }
 }

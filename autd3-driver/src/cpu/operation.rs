@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 13/05/2022
+ * Last Modified: 17/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -46,7 +46,13 @@ pub fn sync(
     }
 
     tx.header_mut().msg_id = msg_id;
-    tx.header_mut().cpu_flag.set(CPUControlFlags::DO_SYNC, true);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::MOD);
+    tx.header_mut()
+        .cpu_flag
+        .remove(CPUControlFlags::CONFIG_SILENCER);
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::CONFIG_SYNC, true);
     tx.header_mut().sync_header_mut().ecat_sync_cycle_ticks = sync_cycle_ticks;
 
     tx.body_mut()
@@ -68,10 +74,14 @@ pub fn modulation(
     tx: &mut TxDatagram,
 ) -> Result<()> {
     tx.header_mut().msg_id = msg_id;
-    tx.header_mut().cpu_flag.remove(CPUControlFlags::DO_SYNC);
-    tx.header_mut()
-        .cpu_flag
-        .remove(CPUControlFlags::CONFIG_SILENCER);
+    tx.header_mut().cpu_flag.set(CPUControlFlags::MOD, true);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::MOD_BEGIN);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::MOD_END);
+    tx.header_mut().size = mod_data.len() as _;
+
+    if mod_data.is_empty() {
+        return Ok(());
+    }
 
     if is_first_frame && mod_data.len() > MOD_HEAD_DATA_SIZE {
         return Err(CPUError::ModulationHeadDataSizeOutOfRange(mod_data.len()).into());
@@ -85,7 +95,6 @@ pub fn modulation(
         if freq_div < MOD_SAMPLING_FREQ_DIV_MIN {
             return Err(FPGAError::ModFreqDivOutOfRange(freq_div).into());
         }
-
         tx.header_mut()
             .cpu_flag
             .set(CPUControlFlags::MOD_BEGIN, true);
@@ -94,7 +103,6 @@ pub fn modulation(
     } else {
         tx.header_mut().mod_body_mut().data[0..mod_data.len()].copy_from_slice(mod_data);
     }
-    tx.header_mut().size = mod_data.len() as _;
 
     if is_last_frame {
         tx.header_mut().cpu_flag.set(CPUControlFlags::MOD_END, true);
@@ -109,7 +117,10 @@ pub fn config_silencer(msg_id: u8, cycle: u16, step: u16, tx: &mut TxDatagram) -
     }
 
     tx.header_mut().msg_id = msg_id;
-    tx.header_mut().cpu_flag.remove(CPUControlFlags::DO_SYNC);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::MOD);
+    tx.header_mut()
+        .cpu_flag
+        .remove(CPUControlFlags::CONFIG_SYNC);
     tx.header_mut()
         .cpu_flag
         .set(CPUControlFlags::CONFIG_SILENCER, true);
@@ -123,10 +134,14 @@ pub fn config_silencer(msg_id: u8, cycle: u16, step: u16, tx: &mut TxDatagram) -
 pub fn normal_legacy_head(msg_id: u8, tx: &mut TxDatagram) {
     tx.header_mut().msg_id = msg_id;
 
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
+
     tx.header_mut()
         .fpga_flag
         .set(FPGAControlFlags::LEGACY_MODE, true);
     tx.header_mut().fpga_flag.remove(FPGAControlFlags::STM_MODE);
+
+    tx.num_bodies = 0;
 }
 
 pub fn normal_legacy_body(drive: &[LegacyDrive], tx: &mut TxDatagram) -> Result<()> {
@@ -137,6 +152,10 @@ pub fn normal_legacy_body(drive: &[LegacyDrive], tx: &mut TxDatagram) -> Result<
         }
         .into());
     }
+
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::WRITE_BODY, true);
 
     tx.body_mut()
         .iter_mut()
@@ -151,10 +170,14 @@ pub fn normal_legacy_body(drive: &[LegacyDrive], tx: &mut TxDatagram) -> Result<
 pub fn normal_head(msg_id: u8, tx: &mut TxDatagram) {
     tx.header_mut().msg_id = msg_id;
 
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
+
     tx.header_mut()
         .fpga_flag
         .remove(FPGAControlFlags::LEGACY_MODE);
     tx.header_mut().fpga_flag.remove(FPGAControlFlags::STM_MODE);
+
+    tx.num_bodies = 0;
 }
 
 pub fn normal_duty_body(drive: &[Duty], tx: &mut TxDatagram) -> Result<()> {
@@ -166,6 +189,9 @@ pub fn normal_duty_body(drive: &[Duty], tx: &mut TxDatagram) -> Result<()> {
         .into());
     }
 
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::WRITE_BODY, true);
     tx.header_mut().cpu_flag.set(CPUControlFlags::IS_DUTY, true);
 
     tx.body_mut()
@@ -187,6 +213,9 @@ pub fn normal_phase_body(drive: &[Phase], tx: &mut TxDatagram) -> Result<()> {
         .into());
     }
 
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::WRITE_BODY, true);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::IS_DUTY);
 
     tx.body_mut()
@@ -202,12 +231,18 @@ pub fn normal_phase_body(drive: &[Phase], tx: &mut TxDatagram) -> Result<()> {
 pub fn point_stm_head(msg_id: u8, tx: &mut TxDatagram) {
     tx.header_mut().msg_id = msg_id;
 
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_BEGIN);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_END);
+
     tx.header_mut()
         .fpga_flag
         .set(FPGAControlFlags::STM_MODE, true);
     tx.header_mut()
         .fpga_flag
         .remove(FPGAControlFlags::STM_GAIN_MODE);
+
+    tx.num_bodies = 0;
 }
 
 pub fn point_stm_body(
@@ -218,21 +253,27 @@ pub fn point_stm_body(
     is_last_frame: bool,
     tx: &mut TxDatagram,
 ) -> Result<()> {
+    if points.is_empty() || points[0].is_empty() {
+        return Ok(());
+    }
+
     if is_first_frame {
         for s in points {
             if s.len() > POINT_STM_HEAD_DATA_SIZE {
                 return Err(CPUError::PointSTMHeadDataSizeOutOfRange(s.len()).into());
             }
         }
-    }
-
-    if !is_first_frame {
+    } else {
         for s in points {
             if s.len() > POINT_STM_BODY_DATA_SIZE {
                 return Err(CPUError::PointSTMBodyDataSizeOutOfRange(s.len()).into());
             }
         }
     }
+
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::WRITE_BODY, true);
 
     if is_first_frame {
         if freq_div < STM_SAMPLING_FREQ_DIV_MIN {
@@ -267,6 +308,10 @@ pub fn point_stm_body(
 pub fn gain_stm_legacy_head(msg_id: u8, tx: &mut TxDatagram) {
     tx.header_mut().msg_id = msg_id;
 
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_BEGIN);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_END);
+
     tx.header_mut()
         .fpga_flag
         .set(FPGAControlFlags::LEGACY_MODE, true);
@@ -276,6 +321,8 @@ pub fn gain_stm_legacy_head(msg_id: u8, tx: &mut TxDatagram) {
     tx.header_mut()
         .fpga_flag
         .set(FPGAControlFlags::STM_GAIN_MODE, true);
+
+    tx.num_bodies = 0;
 }
 
 pub fn gain_stm_legacy_body(
@@ -285,6 +332,14 @@ pub fn gain_stm_legacy_body(
     is_last_frame: bool,
     tx: &mut TxDatagram,
 ) -> Result<()> {
+    if gain.is_empty() && !is_first_frame {
+        return Ok(());
+    }
+
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::WRITE_BODY, true);
+
     if is_first_frame {
         if freq_div < STM_SAMPLING_FREQ_DIV_MIN {
             return Err(FPGAError::STMFreqDivOutOfRange(freq_div).into());
@@ -318,6 +373,10 @@ pub fn gain_stm_legacy_body(
 pub fn gain_stm_normal_head(msg_id: u8, tx: &mut TxDatagram) {
     tx.header_mut().msg_id = msg_id;
 
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_BEGIN);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_END);
+
     tx.header_mut()
         .fpga_flag
         .remove(FPGAControlFlags::LEGACY_MODE);
@@ -327,6 +386,8 @@ pub fn gain_stm_normal_head(msg_id: u8, tx: &mut TxDatagram) {
     tx.header_mut()
         .fpga_flag
         .set(FPGAControlFlags::STM_GAIN_MODE, true);
+
+    tx.num_bodies = 0;
 }
 
 pub fn gain_stm_normal_phase_body(
@@ -335,6 +396,14 @@ pub fn gain_stm_normal_phase_body(
     freq_div: u32,
     tx: &mut TxDatagram,
 ) -> Result<()> {
+    if phase.is_empty() && !is_first_frame {
+        return Ok(());
+    }
+
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::WRITE_BODY, true);
+
     tx.header_mut().cpu_flag.remove(CPUControlFlags::IS_DUTY);
 
     if is_first_frame {
@@ -368,6 +437,14 @@ pub fn gain_stm_normal_duty_body(
     is_last_frame: bool,
     tx: &mut TxDatagram,
 ) -> Result<()> {
+    if duty.is_empty() && !is_first_frame {
+        return Ok(());
+    }
+
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::WRITE_BODY, true);
+
     tx.header_mut().cpu_flag.set(CPUControlFlags::IS_DUTY, true);
 
     if is_first_frame {
