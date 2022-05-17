@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 02/05/2022
+ * Last Modified: 17/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -71,11 +71,6 @@ impl TxDatagram {
                 .add(std::mem::size_of::<GlobalHeader>()) as *mut Body;
             std::slice::from_raw_parts_mut(ptr, self.size)
         }
-    }
-
-    pub fn clear(&mut self) {
-        self.header_mut().clear();
-        self.num_bodies = 0;
     }
 
     pub fn copy_from(&mut self, src: &TxDatagram) {

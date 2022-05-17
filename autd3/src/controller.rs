@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 09/05/2022
+ * Last Modified: 17/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -24,13 +24,13 @@ use autd3_core::{
     interface::{DatagramBody, DatagramHeader, Empty, Filled, Sendable},
     is_msg_processed,
     link::Link,
-    FirmwareInfo, RxDatagram, TxDatagram, EC_DEVICE_PER_FRAME, EC_TRAFFIC_DELAY,
-    MSG_NORMAL_BEGINNING, MSG_NORMAL_END, NUM_TRANS_IN_UNIT,
+    FirmwareInfo, RxDatagram, TxDatagram, EC_DEVICE_PER_FRAME, EC_TRAFFIC_DELAY, MSG_BEGIN,
+    MSG_END, NUM_TRANS_IN_UNIT,
 };
 
 use crate::{prelude::Null, SilencerConfig};
 
-static MSG_ID: AtomicU8 = AtomicU8::new(MSG_NORMAL_BEGINNING);
+static MSG_ID: AtomicU8 = AtomicU8::new(MSG_BEGIN);
 
 pub struct Sender<'a, 'b, L: Link, T: Transducer, S: Sendable<T>, H, B> {
     cnt: &'a mut Controller<L, T>,
@@ -57,13 +57,11 @@ impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Fil
         b.init()?;
         self.buf.init()?;
 
+        autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
+        autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
+
         let mut succsess = true;
         loop {
-            self.cnt.tx_buf.clear();
-
-            autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
-            autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
-
             let msg_id = self.cnt.get_id();
             self.buf
                 .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)?;
@@ -81,13 +79,11 @@ impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Fil
     pub fn flush(mut self) -> Result<bool> {
         self.buf.init()?;
 
+        autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
+        autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
+
         let mut succsess = true;
         loop {
-            self.cnt.tx_buf.clear();
-
-            autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
-            autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
-
             let msg_id = self.cnt.get_id();
             self.buf
                 .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)?;
@@ -107,13 +103,11 @@ impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Emp
         b.init()?;
         self.buf.init()?;
 
+        autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
+        autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
+
         let mut succsess = true;
         loop {
-            self.cnt.tx_buf.clear();
-
-            autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
-            autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
-
             let msg_id = self.cnt.get_id();
             b.pack(msg_id, &mut self.cnt.tx_buf)?;
             self.buf
@@ -130,12 +124,11 @@ impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Emp
 
     pub fn flush(mut self) -> Result<bool> {
         let mut succsess = true;
+
+        autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
+        autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
+
         loop {
-            self.cnt.tx_buf.clear();
-
-            autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
-            autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
-
             let msg_id = self.cnt.get_id();
             self.buf
                 .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)?;
@@ -153,26 +146,29 @@ impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Emp
 impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>, H, B> Drop for Sender<'a, 'b, L, T, S, H, B> {
     fn drop(&mut self) {
         if !self.sent {
-            self.buf.init().unwrap();
+            if self.buf.init().is_err() {
+                return;
+            }
 
-            let mut succsess = true;
+            autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
+            autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
+
             loop {
-                self.cnt.tx_buf.clear();
-
-                autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
-                autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
-
                 let msg_id = self.cnt.get_id();
-                self.buf
+                if self
+                    .buf
                     .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)
-                    .unwrap();
-                self.cnt.link.send(&self.cnt.tx_buf).unwrap();
-                succsess &= self.cnt.wait_msg_processed(50).unwrap();
-                if !succsess || self.buf.is_finished() {
+                    .is_err()
+                {
+                    return;
+                }
+                if self.cnt.link.send(&self.cnt.tx_buf).is_err() {
+                    return;
+                }
+                if !self.cnt.wait_msg_processed(50).unwrap_or(false) || self.buf.is_finished() {
                     break;
                 }
             }
-            self.sent = true;
         }
     }
 }
@@ -224,8 +220,6 @@ impl<L: Link, T: Transducer> Controller<L, T> {
     }
 
     pub fn config_silencer(&mut self, config: SilencerConfig) -> Result<bool> {
-        self.tx_buf.clear();
-
         autd3_core::force_fan(&mut self.tx_buf, self.force_fan);
         autd3_core::reads_fpga_info(&mut self.tx_buf, self.reads_fpga_info);
 
@@ -240,7 +234,6 @@ impl<L: Link, T: Transducer> Controller<L, T> {
     pub fn clear(&mut self) -> Result<bool> {
         let check_ack = self.check_ack;
         self.check_ack = true;
-        self.tx_buf.clear();
         autd3_core::clear(&mut self.tx_buf);
         self.link.send(&self.tx_buf)?;
         let success = self.wait_msg_processed(200)?;
@@ -249,8 +242,6 @@ impl<L: Link, T: Transducer> Controller<L, T> {
     }
 
     pub fn synchronize(&mut self) -> Result<bool> {
-        self.tx_buf.clear();
-
         autd3_core::force_fan(&mut self.tx_buf, self.force_fan);
         autd3_core::reads_fpga_info(&mut self.tx_buf, self.reads_fpga_info);
 
@@ -342,13 +333,17 @@ impl<L: Link, T: Transducer> Controller<L, T> {
 
 impl<L: Link, T: Transducer> Controller<L, T> {
     pub fn get_id(&self) -> u8 {
-        MSG_ID.fetch_add(1, atomic::Ordering::SeqCst);
-        let _ = MSG_ID.compare_exchange(
-            MSG_NORMAL_END,
-            MSG_NORMAL_BEGINNING,
-            atomic::Ordering::SeqCst,
-            atomic::Ordering::SeqCst,
-        );
+        if MSG_ID
+            .compare_exchange(
+                MSG_END,
+                MSG_BEGIN,
+                atomic::Ordering::SeqCst,
+                atomic::Ordering::SeqCst,
+            )
+            .is_err()
+        {
+            MSG_ID.fetch_add(1, atomic::Ordering::SeqCst);
+        }
         MSG_ID.load(atomic::Ordering::SeqCst)
     }
 

@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 05/05/2022
+ * Last Modified: 17/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -60,13 +60,6 @@ impl GlobalHeader {
             size: 0,
             data: [0x00; 124],
         }
-    }
-
-    pub fn clear(&mut self) {
-        self.msg_id = 0;
-        self.fpga_flag = FPGAControlFlags::NONE;
-        self.cpu_flag = CPUControlFlags::NONE;
-        self.size = 0;
     }
 
     pub fn mod_head(&self) -> &MOD_HEAD {

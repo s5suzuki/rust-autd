@@ -4,7 +4,7 @@
  * Created Date: 06/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 10/05/2022
+ * Last Modified: 17/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -12,7 +12,7 @@
  */
 
 use autd3_driver::{
-    Body, CPUControlFlags, FPGAControlFlags, GlobalHeader, MSG_CLEAR, MSG_RD_CPU_VERSION,
+    Body, CPUControlFlags, FPGAControlFlags, GlobalHeader, MSG_CLEAR, MSG_END, MSG_RD_CPU_VERSION,
     MSG_RD_FPGA_FUNCTION, MSG_RD_FPGA_VERSION, NUM_TRANS_IN_UNIT,
 };
 
@@ -419,25 +419,29 @@ impl CPUEmulator {
                 self.ack = ((self.get_fpga_version() >> 8) & 0xFF) as _;
             }
             _ => {
-                if header.cpu_flag.contains(CPUControlFlags::DO_SYNC) {
-                    self.synchronize(header, body);
-                    return;
-                }
-
-                if header.cpu_flag.contains(CPUControlFlags::CONFIG_SILENCER) {
-                    self.config_silencer(header);
+                if self.msg_id > MSG_END {
                     return;
                 }
 
                 let ctl_reg = header.fpga_flag;
-
-                self.write_mod(header);
-
                 self.bram_write(
                     BRAM_SELECT_CONTROLLER,
                     BRAM_ADDR_CTL_REG,
                     ctl_reg.bits() as _,
                 );
+
+                if header.cpu_flag.contains(CPUControlFlags::MOD) {
+                    self.write_mod(header);
+                } else if header.cpu_flag.contains(CPUControlFlags::CONFIG_SILENCER) {
+                    self.config_silencer(header);
+                } else if header.cpu_flag.contains(CPUControlFlags::CONFIG_SYNC) {
+                    self.synchronize(header, body);
+                    return;
+                }
+
+                if !header.cpu_flag.contains(CPUControlFlags::WRITE_BODY) {
+                    return;
+                }
 
                 if !ctl_reg.contains(FPGAControlFlags::STM_MODE) {
                     self.write_normal_op(header, body);
