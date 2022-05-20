@@ -22,10 +22,10 @@ jobs:
         cd ..
         cd autd3-core
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
-        cd .. && sleep 60
+        cd ..
         cd autd3-traits
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
-        cd ..
+        cd .. && sleep 60
         cd autd3
         cargo publish --token ${{ secrets.CRATEIO_TOKEN }} || true
         cd ..
