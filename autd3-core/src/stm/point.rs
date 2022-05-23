@@ -13,7 +13,7 @@
 
 use crate::{
     geometry::{Geometry, Transducer, Vector3},
-    interface::DatagramBody,
+    interface::{DatagramBody, Empty, Filled, Sendable},
 };
 
 use anyhow::{Ok, Result};
@@ -132,6 +132,23 @@ impl<T: Transducer> DatagramBody<T> for PointSTM {
 
     fn is_finished(&self) -> bool {
         self.sent == self.control_points.len()
+    }
+}
+
+impl<T: Transducer> Sendable<T> for PointSTM {
+    type H = Empty;
+    type B = Filled;
+
+    fn init(&mut self) -> Result<()> {
+        DatagramBody::<T>::init(self)
+    }
+
+    fn pack(&mut self, _msg_id: u8, geometry: &Geometry<T>, tx: &mut TxDatagram) -> Result<()> {
+        DatagramBody::<T>::pack(self, geometry, tx)
+    }
+
+    fn is_finished(&self) -> bool {
+        DatagramBody::<T>::is_finished(self)
     }
 }
 

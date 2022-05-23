@@ -14,7 +14,7 @@
 use crate::{
     gain::Gain,
     geometry::{Geometry, LegacyTransducer, NormalTransducer, Transducer},
-    interface::DatagramBody,
+    interface::{DatagramBody, Empty, Filled, Sendable},
 };
 
 use anyhow::{Ok, Result};
@@ -188,5 +188,49 @@ impl<T: Transducer> STM for GainSTM<T> {
 
     fn sampling_freq_div(&mut self) -> u32 {
         self.sample_freq_div
+    }
+}
+
+impl Sendable<LegacyTransducer> for GainSTM<LegacyTransducer> {
+    type H = Empty;
+    type B = Filled;
+
+    fn init(&mut self) -> Result<()> {
+        DatagramBody::<LegacyTransducer>::init(self)
+    }
+
+    fn pack(
+        &mut self,
+        _msg_id: u8,
+        geometry: &Geometry<LegacyTransducer>,
+        tx: &mut TxDatagram,
+    ) -> Result<()> {
+        DatagramBody::<LegacyTransducer>::pack(self, geometry, tx)
+    }
+
+    fn is_finished(&self) -> bool {
+        DatagramBody::<LegacyTransducer>::is_finished(self)
+    }
+}
+
+impl Sendable<NormalTransducer> for GainSTM<NormalTransducer> {
+    type H = Empty;
+    type B = Filled;
+
+    fn init(&mut self) -> Result<()> {
+        DatagramBody::<NormalTransducer>::init(self)
+    }
+
+    fn pack(
+        &mut self,
+        _msg_id: u8,
+        geometry: &Geometry<NormalTransducer>,
+        tx: &mut TxDatagram,
+    ) -> Result<()> {
+        DatagramBody::<NormalTransducer>::pack(self, geometry, tx)
+    }
+
+    fn is_finished(&self) -> bool {
+        DatagramBody::<NormalTransducer>::is_finished(self)
     }
 }

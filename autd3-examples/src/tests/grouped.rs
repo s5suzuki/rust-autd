@@ -4,7 +4,7 @@
  * Created Date: 13/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 13/05/2022
+ * Last Modified: 23/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -14,8 +14,8 @@
 #[macro_export]
 macro_rules! grouped {
     ($autd:ident) => {{
-        let silencer_config = SilencerConfig::default();
-        $autd.config_silencer(silencer_config)?;
+        let mut silencer_config = SilencerConfig::default();
+        $autd.send(&mut silencer_config).flush()?;
 
         let g1 = Focus::new($autd.geometry().devices()[0].center() + Vector3::new(0., 0., 150.0));
         let g2 = Bessel::new(

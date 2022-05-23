@@ -16,12 +16,12 @@ use std::{
     sync::atomic::{self, AtomicU8},
 };
 
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use itertools::Itertools;
 
 use autd3_core::{
     geometry::{Geometry, Transducer},
-    interface::{DatagramBody, DatagramHeader, NullBody},
+    interface::{DatagramBody, DatagramHeader, Empty, Filled, NullBody, NullHeader, Sendable},
     is_msg_processed,
     link::Link,
     FirmwareInfo, RxDatagram, TxDatagram, EC_DEVICE_PER_FRAME, EC_TRAFFIC_DELAY, MSG_BEGIN,
@@ -32,7 +32,7 @@ use crate::{prelude::Null, SilencerConfig};
 
 static MSG_ID: AtomicU8 = AtomicU8::new(MSG_BEGIN);
 
-pub struct Sender<'a, 'b, L: Link, T: Transducer, S, H, B> {
+pub struct Sender<'a, 'b, L: Link, T: Transducer, S: Sendable<T>, H, B> {
     cnt: &'a mut Controller<L, T>,
     buf: &'b mut S,
     sent: bool,
@@ -40,138 +40,111 @@ pub struct Sender<'a, 'b, L: Link, T: Transducer, S, H, B> {
     _body: PhantomData<B>,
 }
 
-// impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Empty, Empty> {
-//     pub fn new(cnt: &'a mut Controller<L, T>, s: &'b mut S) -> Sender<'a, 'b, L, T, S, S::H, S::B> {
-//         Sender {
-//             cnt,
-//             buf: s,
-//             sent: false,
-//             _head: PhantomData,
-//             _body: PhantomData,
-//         }
-//     }
-// }
+impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Empty, Empty> {
+    pub fn new(cnt: &'a mut Controller<L, T>, s: &'b mut S) -> Sender<'a, 'b, L, T, S, S::H, S::B> {
+        Sender {
+            cnt,
+            buf: s,
+            sent: false,
+            _head: PhantomData,
+            _body: PhantomData,
+        }
+    }
+}
 
-// impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Filled, Empty> {
-//     pub fn send<B: DatagramBody<T>>(mut self, b: &'b mut B) -> Result<bool> {
-//         b.init()?;
-//         self.buf.init()?;
+impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Filled, Empty> {
+    pub fn send<B: DatagramBody<T>>(mut self, b: &'b mut B) -> Result<bool> {
+        self.buf.init()?;
+        b.init()?;
 
-//         autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
-//         autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
+        autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
+        autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
 
-//         let mut succsess = true;
-//         loop {
-//             let msg_id = self.cnt.get_id();
-//             self.buf
-//                 .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)?;
-//             b.pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)?;
-//             self.cnt.link.send(&self.cnt.tx_buf)?;
-//             succsess &= self.cnt.wait_msg_processed(50)?;
-//             if !succsess || (self.buf.is_finished() && b.is_finished()) {
-//                 break;
-//             }
-//         }
-//         self.sent = true;
-//         Ok(succsess)
-//     }
+        loop {
+            let msg_id = self.cnt.get_id();
+            self.buf
+                .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)?;
+            b.pack(&self.cnt.geometry, &mut self.cnt.tx_buf)?;
+            self.cnt.link.send(&self.cnt.tx_buf)?;
+            if !self.cnt.wait_msg_processed(50)? {
+                self.sent = true;
+                return Ok(false);
+            }
+            if self.buf.is_finished() && b.is_finished() {
+                break;
+            }
+        }
+        self.sent = true;
+        Ok(true)
+    }
 
-//     pub fn flush(mut self) -> Result<bool> {
-//         self.buf.init()?;
+    pub fn flush(self) -> Result<bool> {
+        let mut b = NullBody::new();
+        self.send(&mut b)
+    }
+}
 
-//         autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
-//         autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
+impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Empty, Filled> {
+    pub fn send<H: DatagramHeader>(mut self, b: &'b mut H) -> Result<bool> {
+        b.init()?;
+        self.buf.init()?;
 
-//         let mut succsess = true;
-//         loop {
-//             let msg_id = self.cnt.get_id();
-//             self.buf
-//                 .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)?;
-//             self.cnt.link.send(&self.cnt.tx_buf)?;
-//             succsess &= self.cnt.wait_msg_processed(50)?;
-//             if !succsess || self.buf.is_finished() {
-//                 break;
-//             }
-//         }
-//         self.sent = true;
-//         Ok(succsess)
-//     }
-// }
+        autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
+        autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
 
-// impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Empty, Filled> {
-//     pub fn send<H: DatagramHeader>(mut self, b: &'b mut H) -> Result<bool> {
-//         b.init()?;
-//         self.buf.init()?;
+        loop {
+            let msg_id = self.cnt.get_id();
+            b.pack(msg_id, &mut self.cnt.tx_buf)?;
+            self.buf
+                .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)?;
+            self.cnt.link.send(&self.cnt.tx_buf)?;
+            if !self.cnt.wait_msg_processed(50)? {
+                self.sent = true;
+                return Ok(false);
+            }
+            if self.buf.is_finished() && b.is_finished() {
+                break;
+            }
+        }
+        self.sent = true;
+        Ok(true)
+    }
 
-//         autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
-//         autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
+    pub fn flush(self) -> Result<bool> {
+        let mut h = NullHeader::new();
+        self.send(&mut h)
+    }
+}
 
-//         let mut succsess = true;
-//         loop {
-//             let msg_id = self.cnt.get_id();
-//             b.pack(msg_id, &mut self.cnt.tx_buf)?;
-//             self.buf
-//                 .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)?;
-//             self.cnt.link.send(&self.cnt.tx_buf)?;
-//             succsess &= self.cnt.wait_msg_processed(50)?;
-//             if !succsess || (self.buf.is_finished() && b.is_finished()) {
-//                 break;
-//             }
-//         }
-//         self.sent = true;
-//         Ok(succsess)
-//     }
+impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>, H, B> Drop for Sender<'a, 'b, L, T, S, H, B> {
+    fn drop(&mut self) {
+        if !self.sent {
+            if self.buf.init().is_err() {
+                return;
+            }
 
-//     pub fn flush(mut self) -> Result<bool> {
-//         let mut succsess = true;
+            autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
+            autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
 
-//         autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
-//         autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
-
-//         loop {
-//             let msg_id = self.cnt.get_id();
-//             self.buf
-//                 .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)?;
-//             self.cnt.link.send(&self.cnt.tx_buf)?;
-//             succsess &= self.cnt.wait_msg_processed(50)?;
-//             if !succsess || self.buf.is_finished() {
-//                 break;
-//             }
-//         }
-//         self.sent = true;
-//         Ok(succsess)
-//     }
-// }
-
-// impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>, H, B> Drop for Sender<'a, 'b, L, T, S, H, B> {
-//     fn drop(&mut self) {
-//         if !self.sent {
-//             if self.buf.init().is_err() {
-//                 return;
-//             }
-
-//             autd3_core::force_fan(&mut self.cnt.tx_buf, self.cnt.force_fan);
-//             autd3_core::reads_fpga_info(&mut self.cnt.tx_buf, self.cnt.reads_fpga_info);
-
-//             loop {
-//                 let msg_id = self.cnt.get_id();
-//                 if self
-//                     .buf
-//                     .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)
-//                     .is_err()
-//                 {
-//                     return;
-//                 }
-//                 if self.cnt.link.send(&self.cnt.tx_buf).is_err() {
-//                     return;
-//                 }
-//                 if !self.cnt.wait_msg_processed(50).unwrap_or(false) || self.buf.is_finished() {
-//                     break;
-//                 }
-//             }
-//         }
-//     }
-// }
+            loop {
+                let msg_id = self.cnt.get_id();
+                if self
+                    .buf
+                    .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)
+                    .is_err()
+                {
+                    return;
+                }
+                if self.cnt.link.send(&self.cnt.tx_buf).is_err() {
+                    return;
+                }
+                if !self.cnt.wait_msg_processed(50).unwrap_or(false) || self.buf.is_finished() {
+                    break;
+                }
+            }
+        }
+    }
+}
 
 pub struct Controller<L: Link, T: Transducer> {
     link: L,
@@ -200,67 +173,24 @@ impl<L: Link, T: Transducer> Controller<L, T> {
     }
 }
 
-type SendPack<'a, 'b, T: Transducer, H: DatagramHeader, B: DatagramBody<T>> =
-    (&'a mut H, &'b mut B, PhantomData<T>);
-
-impl<'a, 'b, T: Transducer, H: DatagramHeader, B: DatagramBody<T>> From<&mut H>
-    for SendPack<'a, 'b, T, H, B>
-{
-    fn from(h: &mut H) -> Self {
-        (h, NullBody::new(), PhantomData)
-    }
-}
-
 impl<L: Link, T: Transducer> Controller<L, T> {
     pub fn geometry(&self) -> &Geometry<T> {
         &self.geometry
     }
 
-    fn send<
-        'a,
-        'b,
-        H: 'a + DatagramHeader,
-        B: 'b + DatagramBody<T>,
-        S: Into<SendPack<'a, 'b, T, H, B>>,
-    >(
-        &mut self,
-        s: S,
-    ) -> Result<bool> {
-        let (h, b, _) = s.into();
-        h.init()?;
-        b.init()?;
-
-        autd3_core::force_fan(&mut self.tx_buf, self.force_fan);
-        autd3_core::reads_fpga_info(&mut self.tx_buf, self.reads_fpga_info);
-
-        loop {
-            let msg_id = Self::get_id();
-            h.pack(msg_id, &mut self.tx_buf)?;
-            b.pack(&self.geometry, &mut self.tx_buf)?;
-            self.link.send(&self.tx_buf)?;
-            if !self.wait_msg_processed(50)? {
-                return Ok(false);
-            }
-            if h.is_finished() && b.is_finished() {
-                break;
-            }
-        }
-        Ok(true)
+    /// Send header and body to the devices
+    ///
+    /// # Arguments
+    ///
+    /// * `header` - Header
+    /// * `body` - Body
+    ///
+    pub fn send<'a, 'b, S: Sendable<T>>(
+        &'a mut self,
+        s: &'b mut S,
+    ) -> Sender<'a, 'b, L, T, S, S::H, S::B> {
+        Sender::new(self, s)
     }
-
-    // /// Send header and body to the devices
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `header` - Header
-    // /// * `body` - Body
-    // ///
-    // pub fn send<'a, 'b, S: Sendable<T>>(
-    //     &'a mut self,
-    //     s: &'b mut S,
-    // ) -> Sender<'a, 'b, L, T, S, S::H, S::B> {
-    //     Sender::new(self, s)
-    // }
 
     /// Clear all data
     pub fn clear(&mut self) -> Result<bool> {
@@ -277,7 +207,7 @@ impl<L: Link, T: Transducer> Controller<L, T> {
         autd3_core::force_fan(&mut self.tx_buf, self.force_fan);
         autd3_core::reads_fpga_info(&mut self.tx_buf, self.reads_fpga_info);
 
-        let msg_id = Self::get_id();
+        let msg_id = self.get_id();
         let cycles: Vec<[u16; NUM_TRANS_IN_UNIT]> = self
             .geometry
             .transducers()
@@ -299,8 +229,8 @@ impl<L: Link, T: Transducer> Controller<L, T> {
     where
         Null<T>: DatagramBody<T>,
     {
-        let config = SilencerConfig::default();
-        let res = self.config_silencer(config)?;
+        let mut config = SilencerConfig::default();
+        let res = self.send(&mut config).flush()?;
 
         let mut g = Null::new();
 
@@ -364,7 +294,7 @@ impl<L: Link, T: Transducer> Controller<L, T> {
 }
 
 impl<L: Link, T: Transducer> Controller<L, T> {
-    pub fn get_id() -> u8 {
+    pub fn get_id(&self) -> u8 {
         if MSG_ID
             .compare_exchange(
                 MSG_END,
