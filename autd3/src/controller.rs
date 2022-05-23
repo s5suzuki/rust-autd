@@ -24,11 +24,12 @@ use autd3_core::{
     interface::{DatagramBody, DatagramHeader, Empty, Filled, NullBody, NullHeader, Sendable},
     is_msg_processed,
     link::Link,
+    silencer_config::SilencerConfig,
     FirmwareInfo, RxDatagram, TxDatagram, EC_DEVICE_PER_FRAME, EC_TRAFFIC_DELAY, MSG_BEGIN,
     MSG_END, NUM_TRANS_IN_UNIT,
 };
 
-use crate::{prelude::Null, SilencerConfig};
+use crate::prelude::Null;
 
 static MSG_ID: AtomicU8 = AtomicU8::new(MSG_BEGIN);
 

@@ -1,6 +1,6 @@
 [package]
 name = "autd3-examples"
-version = "2.0.3"
+version = "2.0.4"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2021"
 
@@ -27,11 +27,11 @@ required-features = ["emulator"]
 [dependencies]
 anyhow = "1.0.57"
 autd3 = {path="../autd3"}
-autd3-gain-holo = {path="../autd3-gain-holo", version="2.0.3"}
-autd3-link-debug = {path="../autd3-link-debug", optional = true, version="2.0.3"}
-autd3-link-emulator = {path="../autd3-link-emulator", optional = true, version="2.0.3"}
-autd3-link-soem = {path="../autd3-link-soem", optional = true, version="2.0.3"}
-autd3-link-twincat = {path="../autd3-link-twincat", optional = true, version="2.0.3"}
+autd3-gain-holo = {path="../autd3-gain-holo", version="2.0.4"}
+autd3-link-debug = {path="../autd3-link-debug", optional = true, version="2.0.4"}
+autd3-link-emulator = {path="../autd3-link-emulator", optional = true, version="2.0.4"}
+autd3-link-soem = {path="../autd3-link-soem", optional = true, version="2.0.4"}
+autd3-link-twincat = {path="../autd3-link-twincat", optional = true, version="2.0.4"}
 colored = "2.0.0"
 simplelog = {version = "0.12.0", optional = true}
 
