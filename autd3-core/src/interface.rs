@@ -39,6 +39,7 @@ pub trait DatagramBody<T: Transducer> {
     fn is_finished(&self) -> bool;
 }
 
+#[derive(Default)]
 pub struct NullHeader {}
 
 impl NullHeader {
@@ -62,6 +63,7 @@ impl DatagramHeader for NullHeader {
     }
 }
 
+#[derive(Default)]
 pub struct NullBody {}
 
 impl NullBody {
