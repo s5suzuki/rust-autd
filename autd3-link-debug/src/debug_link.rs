@@ -4,7 +4,7 @@
  * Created Date: 28/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 08/05/2022
+ * Last Modified: 23/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -43,6 +43,8 @@ impl Link for Debug {
 
     fn send(&mut self, tx: &TxDatagram) -> anyhow::Result<bool> {
         log::info!("Send data");
+        log::info!("\tCPU Flag: {:?}", tx.header().cpu_flag);
+        log::info!("\tFPGA Flag: {:?}", tx.header().fpga_flag);
 
         self.emulator.send(tx);
 
@@ -58,6 +60,31 @@ impl Link for Debug {
                     }
                 } else {
                     log::info!("\tPoint STM mode");
+                }
+                if tx.header().cpu_flag.contains(CPUControlFlags::STM_BEGIN) {
+                    log::info!("\t\tSTM BEGIN");
+                }
+                if tx.header().cpu_flag.contains(CPUControlFlags::STM_END) {
+                    log::info!(
+                        "\t\tSTM END (cycle = {}, frequency_division = {})",
+                        fpga.stm_cycle(),
+                        fpga.stm_frequency_division()
+                    );
+                    fpga.drives().iter().enumerate().for_each(|(i, d)| {
+                        let (duty, phase) = d;
+                        log::debug!("\tSTM[{}]:", i);
+                        log::debug!(
+                            "{}",
+                            duty.iter()
+                                .zip(phase.iter())
+                                .enumerate()
+                                .map(|(i, (d, p))| {
+                                    format!("\n\t\t{}: duty = {}, phase = {}", i, d.duty, p.phase)
+                                })
+                                .collect::<Vec<_>>()
+                                .join("")
+                        );
+                    })
                 }
             } else if fpga.is_legacy_mode() {
                 log::info!("\tNormal Legacy mode");
@@ -90,27 +117,6 @@ impl Link for Debug {
                             .collect::<Vec<_>>()
                             .join("")
                     );
-                } else if tx.header().cpu_flag.contains(CPUControlFlags::STM_END) {
-                    log::info!(
-                        "\tSTM cycle = {}, frequency_division = {}",
-                        fpga.stm_cycle(),
-                        fpga.stm_frequency_division()
-                    );
-                    fpga.drives().iter().enumerate().for_each(|(i, d)| {
-                        let (duty, phase) = d;
-                        log::debug!("\tSTM[{}]:", i);
-                        log::debug!(
-                            "{}",
-                            duty.iter()
-                                .zip(phase.iter())
-                                .enumerate()
-                                .map(|(i, (d, p))| {
-                                    format!("\n\t\t{}: duty = {}, phase = {}", i, d.duty, p.phase)
-                                })
-                                .collect::<Vec<_>>()
-                                .join("")
-                        );
-                    })
                 }
             } else {
                 log::info!("\tWithout output");

@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 13/05/2022
+ * Last Modified: 23/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -40,8 +40,8 @@ impl<T: Transducer> GainProps<T> {
         self.drives.init(size);
     }
 
-    pub fn pack_head(&mut self, msg_id: u8, tx: &mut TxDatagram) {
-        T::pack_head(msg_id, tx);
+    pub fn pack_head(&mut self, tx: &mut TxDatagram) {
+        T::pack_head(tx);
     }
 
     pub fn pack_body(&mut self, tx: &mut TxDatagram) -> Result<()> {

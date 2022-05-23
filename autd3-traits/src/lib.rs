@@ -4,7 +4,7 @@
  * Created Date: 28/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 13/05/2022
+ * Last Modified: 23/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -71,8 +71,6 @@ fn impl_modulation_macro(ast: &syn::DeriveInput) -> TokenStream {
                 msg_id: u8,
                 tx: &mut autd3_core::TxDatagram,
             ) -> anyhow::Result<()> {
-                if self.is_finished() { return Ok(()); }
-
                 let is_first_frame = self.props.sent == 0;
                 let max_size = if is_first_frame {autd3_core::MOD_HEAD_DATA_SIZE} else {autd3_core::MOD_BODY_DATA_SIZE};
                 let mod_size = (self.buffer().len() - self.props.sent).min(max_size);
@@ -168,11 +166,10 @@ fn impl_gain_macro(ast: syn::DeriveInput) -> TokenStream {
 
             fn pack(
                 &mut self,
-                msg_id: u8,
                 geometry: &autd3_core::geometry::Geometry<T>,
                 tx: &mut autd3_core::TxDatagram,
             ) -> anyhow::Result<()> {
-                self.props.pack_head(msg_id, tx);
+                self.props.pack_head(tx);
                 if self.is_finished() {
                     return Ok(());
                 }
@@ -185,6 +182,7 @@ fn impl_gain_macro(ast: syn::DeriveInput) -> TokenStream {
                 self.props.phase_sent && self.props.duty_sent
             }
         }
+
 
         impl #impl_generics autd3_core::interface::Sendable<T> for #name #ty_generics #where_clause {
             type H = autd3_core::interface::Empty;
@@ -200,7 +198,7 @@ fn impl_gain_macro(ast: syn::DeriveInput) -> TokenStream {
                 geometry: &autd3_core::geometry::Geometry<T>,
                 tx: &mut autd3_core::TxDatagram,
             ) -> anyhow::Result<()> {
-                autd3_core::interface::DatagramBody::<T>::pack(self, msg_id, geometry, tx)
+                autd3_core::interface::DatagramBody::<T>::pack(self, geometry, tx)
             }
 
             fn is_finished(&self) -> bool {

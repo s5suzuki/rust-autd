@@ -4,7 +4,7 @@
  * Created Date: 09/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 09/05/2022
+ * Last Modified: 23/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -14,8 +14,8 @@
 #[macro_export]
 macro_rules! trans_test {
     ($autd:ident) => {{
-        let silencer_config = SilencerConfig::default();
-        $autd.config_silencer(silencer_config)?;
+        let mut silencer_config = SilencerConfig::default();
+        $autd.send(&mut silencer_config).flush()?;
 
         let mut g = TransducerTest::new();
         g.set(0, 0., 1.0);

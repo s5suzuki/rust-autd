@@ -4,7 +4,7 @@
  * Created Date: 05/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 13/05/2022
+ * Last Modified: 23/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -43,7 +43,7 @@ impl PointSTM {
         }
     }
 
-    pub fn add_point(&mut self, point: Vector3, duty_shift: u8) -> Result<()> {
+    pub fn add(&mut self, point: Vector3, duty_shift: u8) -> Result<()> {
         if self.control_points.len() + 1 > autd3_driver::POINT_STM_BUF_SIZE_MAX {
             return Err(autd3_driver::FPGAError::PointSTMOutOfBuffer(
                 self.control_points.len() + 1,
@@ -51,17 +51,6 @@ impl PointSTM {
             .into());
         }
         self.control_points.push((point, duty_shift));
-        Ok(())
-    }
-
-    pub fn add_points(&mut self, points: &[(Vector3, u8)]) -> Result<()> {
-        if self.control_points.len() + points.len() > autd3_driver::POINT_STM_BUF_SIZE_MAX {
-            return Err(autd3_driver::FPGAError::PointSTMOutOfBuffer(
-                self.control_points.len() + points.len(),
-            )
-            .into());
-        }
-        self.control_points.extend_from_slice(points);
         Ok(())
     }
 
@@ -86,8 +75,8 @@ impl<T: Transducer> DatagramBody<T> for PointSTM {
         Ok(())
     }
 
-    fn pack(&mut self, msg_id: u8, geometry: &Geometry<T>, tx: &mut TxDatagram) -> Result<()> {
-        autd3_driver::point_stm_head(msg_id, tx);
+    fn pack(&mut self, geometry: &Geometry<T>, tx: &mut TxDatagram) -> Result<()> {
+        autd3_driver::point_stm_head(tx);
 
         if DatagramBody::<T>::is_finished(self) {
             return Ok(());
@@ -143,8 +132,8 @@ impl<T: Transducer> Sendable<T> for PointSTM {
         DatagramBody::<T>::init(self)
     }
 
-    fn pack(&mut self, msg_id: u8, geometry: &Geometry<T>, tx: &mut TxDatagram) -> Result<()> {
-        DatagramBody::<T>::pack(self, msg_id, geometry, tx)
+    fn pack(&mut self, _msg_id: u8, geometry: &Geometry<T>, tx: &mut TxDatagram) -> Result<()> {
+        DatagramBody::<T>::pack(self, geometry, tx)
     }
 
     fn is_finished(&self) -> bool {

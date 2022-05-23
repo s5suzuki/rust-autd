@@ -4,7 +4,7 @@
  * Created Date: 29/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 06/05/2022
+ * Last Modified: 23/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Hapis Lab. All rights reserved.
@@ -16,8 +16,8 @@ macro_rules! holo {
     ($autd:ident) => {{
         use autd3_gain_holo::*;
 
-        let silencer_config = SilencerConfig::default();
-        $autd.config_silencer(silencer_config)?;
+        let mut silencer_config = SilencerConfig::default();
+        $autd.send(&mut silencer_config).flush()?;
 
         let center = $autd.geometry().center() + Vector3::new(0., 0., 150.0);
 

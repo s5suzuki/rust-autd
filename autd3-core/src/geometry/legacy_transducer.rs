@@ -4,7 +4,7 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 13/05/2022
+ * Last Modified: 23/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -117,8 +117,8 @@ impl Transducer for LegacyTransducer {
         2.0 * PI * 40e3 / (sound_speed * 1e3)
     }
 
-    fn pack_head(msg_id: u8, tx: &mut autd3_driver::TxDatagram) {
-        autd3_driver::normal_legacy_head(msg_id, tx);
+    fn pack_head(tx: &mut autd3_driver::TxDatagram) {
+        autd3_driver::normal_legacy_head(tx);
     }
 
     fn pack_body(
