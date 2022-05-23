@@ -4,7 +4,7 @@
  * Created Date: 05/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 13/05/2022
+ * Last Modified: 23/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -13,7 +13,7 @@
 
 use crate::{
     geometry::{Geometry, Transducer, Vector3},
-    interface::{DatagramBody, Empty, Filled, Sendable},
+    interface::DatagramBody,
 };
 
 use anyhow::{Ok, Result};
@@ -86,8 +86,8 @@ impl<T: Transducer> DatagramBody<T> for PointSTM {
         Ok(())
     }
 
-    fn pack(&mut self, msg_id: u8, geometry: &Geometry<T>, tx: &mut TxDatagram) -> Result<()> {
-        autd3_driver::point_stm_head(msg_id, tx);
+    fn pack(&mut self, geometry: &Geometry<T>, tx: &mut TxDatagram) -> Result<()> {
+        autd3_driver::point_stm_head(tx);
 
         if DatagramBody::<T>::is_finished(self) {
             return Ok(());
@@ -132,23 +132,6 @@ impl<T: Transducer> DatagramBody<T> for PointSTM {
 
     fn is_finished(&self) -> bool {
         self.sent == self.control_points.len()
-    }
-}
-
-impl<T: Transducer> Sendable<T> for PointSTM {
-    type H = Empty;
-    type B = Filled;
-
-    fn init(&mut self) -> Result<()> {
-        DatagramBody::<T>::init(self)
-    }
-
-    fn pack(&mut self, msg_id: u8, geometry: &Geometry<T>, tx: &mut TxDatagram) -> Result<()> {
-        DatagramBody::<T>::pack(self, msg_id, geometry, tx)
-    }
-
-    fn is_finished(&self) -> bool {
-        DatagramBody::<T>::is_finished(self)
     }
 }
 

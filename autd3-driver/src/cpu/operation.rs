@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 17/05/2022
+ * Last Modified: 23/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -28,6 +28,24 @@ use anyhow::Result;
 
 pub fn clear(tx: &mut TxDatagram) {
     tx.header_mut().msg_id = MSG_CLEAR;
+    tx.num_bodies = 0;
+}
+
+pub fn null_header(msg_id: u8, tx: &mut TxDatagram) {
+    tx.header_mut().msg_id = msg_id;
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::MOD);
+    tx.header_mut()
+        .cpu_flag
+        .remove(CPUControlFlags::CONFIG_SILENCER);
+    tx.header_mut()
+        .cpu_flag
+        .remove(CPUControlFlags::CONFIG_SYNC);
+
+    tx.header_mut().size = 0;
+}
+
+pub fn null_body(tx: &mut TxDatagram) {
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
     tx.num_bodies = 0;
 }
 
@@ -80,6 +98,7 @@ pub fn modulation(
     tx.header_mut().size = mod_data.len() as _;
 
     if mod_data.is_empty() {
+        tx.header_mut().cpu_flag.remove(CPUControlFlags::MOD);
         return Ok(());
     }
 
@@ -131,9 +150,7 @@ pub fn config_silencer(msg_id: u8, cycle: u16, step: u16, tx: &mut TxDatagram) -
     Ok(())
 }
 
-pub fn normal_legacy_head(msg_id: u8, tx: &mut TxDatagram) {
-    tx.header_mut().msg_id = msg_id;
-
+pub fn normal_legacy_head(tx: &mut TxDatagram) {
     tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
 
     tx.header_mut()
@@ -167,9 +184,7 @@ pub fn normal_legacy_body(drive: &[LegacyDrive], tx: &mut TxDatagram) -> Result<
     Ok(())
 }
 
-pub fn normal_head(msg_id: u8, tx: &mut TxDatagram) {
-    tx.header_mut().msg_id = msg_id;
-
+pub fn normal_head(tx: &mut TxDatagram) {
     tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
 
     tx.header_mut()
@@ -228,9 +243,7 @@ pub fn normal_phase_body(drive: &[Phase], tx: &mut TxDatagram) -> Result<()> {
     Ok(())
 }
 
-pub fn point_stm_head(msg_id: u8, tx: &mut TxDatagram) {
-    tx.header_mut().msg_id = msg_id;
-
+pub fn point_stm_head(tx: &mut TxDatagram) {
     tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_BEGIN);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_END);
@@ -305,9 +318,7 @@ pub fn point_stm_body(
     Ok(())
 }
 
-pub fn gain_stm_legacy_head(msg_id: u8, tx: &mut TxDatagram) {
-    tx.header_mut().msg_id = msg_id;
-
+pub fn gain_stm_legacy_head(tx: &mut TxDatagram) {
     tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_BEGIN);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_END);
@@ -370,9 +381,7 @@ pub fn gain_stm_legacy_body(
     Ok(())
 }
 
-pub fn gain_stm_normal_head(msg_id: u8, tx: &mut TxDatagram) {
-    tx.header_mut().msg_id = msg_id;
-
+pub fn gain_stm_normal_head(tx: &mut TxDatagram) {
     tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_BEGIN);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_END);

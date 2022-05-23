@@ -4,7 +4,7 @@
  * Created Date: 05/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 13/05/2022
+ * Last Modified: 23/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -14,7 +14,7 @@
 use crate::{
     gain::Gain,
     geometry::{Geometry, LegacyTransducer, NormalTransducer, Transducer},
-    interface::{DatagramBody, Empty, Filled, Sendable},
+    interface::DatagramBody,
 };
 
 use anyhow::{Ok, Result};
@@ -71,13 +71,8 @@ impl DatagramBody<LegacyTransducer> for GainSTM<LegacyTransducer> {
         Ok(())
     }
 
-    fn pack(
-        &mut self,
-        msg_id: u8,
-        _geometry: &Geometry<LegacyTransducer>,
-        tx: &mut TxDatagram,
-    ) -> Result<()> {
-        autd3_driver::gain_stm_legacy_head(msg_id, tx);
+    fn pack(&mut self, _geometry: &Geometry<LegacyTransducer>, tx: &mut TxDatagram) -> Result<()> {
+        autd3_driver::gain_stm_legacy_head(tx);
 
         if DatagramBody::<LegacyTransducer>::is_finished(self) {
             return Ok(());
@@ -121,13 +116,8 @@ impl DatagramBody<NormalTransducer> for GainSTM<NormalTransducer> {
         Ok(())
     }
 
-    fn pack(
-        &mut self,
-        msg_id: u8,
-        _geometry: &Geometry<NormalTransducer>,
-        tx: &mut TxDatagram,
-    ) -> Result<()> {
-        autd3_driver::gain_stm_normal_head(msg_id, tx);
+    fn pack(&mut self, _geometry: &Geometry<NormalTransducer>, tx: &mut TxDatagram) -> Result<()> {
+        autd3_driver::gain_stm_normal_head(tx);
 
         if DatagramBody::<NormalTransducer>::is_finished(self) {
             return Ok(());
@@ -172,50 +162,6 @@ impl DatagramBody<NormalTransducer> for GainSTM<NormalTransducer> {
 
     fn is_finished(&self) -> bool {
         self.sent == self.gains.len() * 2 + 1
-    }
-}
-
-impl Sendable<LegacyTransducer> for GainSTM<LegacyTransducer> {
-    type H = Empty;
-    type B = Filled;
-
-    fn init(&mut self) -> Result<()> {
-        DatagramBody::<LegacyTransducer>::init(self)
-    }
-
-    fn pack(
-        &mut self,
-        msg_id: u8,
-        geometry: &Geometry<LegacyTransducer>,
-        tx: &mut TxDatagram,
-    ) -> Result<()> {
-        DatagramBody::<LegacyTransducer>::pack(self, msg_id, geometry, tx)
-    }
-
-    fn is_finished(&self) -> bool {
-        DatagramBody::<LegacyTransducer>::is_finished(self)
-    }
-}
-
-impl Sendable<NormalTransducer> for GainSTM<NormalTransducer> {
-    type H = Empty;
-    type B = Filled;
-
-    fn init(&mut self) -> Result<()> {
-        DatagramBody::<NormalTransducer>::init(self)
-    }
-
-    fn pack(
-        &mut self,
-        msg_id: u8,
-        geometry: &Geometry<NormalTransducer>,
-        tx: &mut TxDatagram,
-    ) -> Result<()> {
-        DatagramBody::<NormalTransducer>::pack(self, msg_id, geometry, tx)
-    }
-
-    fn is_finished(&self) -> bool {
-        DatagramBody::<NormalTransducer>::is_finished(self)
     }
 }
 

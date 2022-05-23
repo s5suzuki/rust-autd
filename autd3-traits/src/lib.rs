@@ -4,7 +4,7 @@
  * Created Date: 28/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 13/05/2022
+ * Last Modified: 23/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Hapis Lab. All rights reserved.
@@ -88,28 +88,6 @@ fn impl_modulation_macro(ast: &syn::DeriveInput) -> TokenStream {
                 self.props.sent == self.buffer().len()
             }
         }
-
-        impl <T: autd3_core::geometry::Transducer> autd3_core::interface::Sendable<T> for #name #ty_generics #where_clause {
-            type H = autd3_core::interface::Filled;
-            type B = autd3_core::interface::Empty;
-
-            fn init(&mut self) -> anyhow::Result<()> {
-                autd3_core::interface::DatagramHeader::init(self)
-            }
-
-            fn pack(
-                &mut self,
-                msg_id: u8,
-                _geometry: &autd3_core::geometry::Geometry<T>,
-                tx: &mut autd3_core::TxDatagram,
-            ) -> anyhow::Result<()> {
-                autd3_core::interface::DatagramHeader::pack(self, msg_id, tx)
-            }
-
-            fn is_finished(&self) -> bool {
-                autd3_core::interface::DatagramHeader::is_finished(self)
-            }
-        }
     };
     gen.into()
 }
@@ -168,11 +146,10 @@ fn impl_gain_macro(ast: syn::DeriveInput) -> TokenStream {
 
             fn pack(
                 &mut self,
-                msg_id: u8,
                 geometry: &autd3_core::geometry::Geometry<T>,
                 tx: &mut autd3_core::TxDatagram,
             ) -> anyhow::Result<()> {
-                self.props.pack_head(msg_id, tx);
+                self.props.pack_head(tx);
                 if self.is_finished() {
                     return Ok(());
                 }
@@ -183,28 +160,6 @@ fn impl_gain_macro(ast: syn::DeriveInput) -> TokenStream {
 
             fn is_finished(&self) -> bool {
                 self.props.phase_sent && self.props.duty_sent
-            }
-        }
-
-        impl #impl_generics autd3_core::interface::Sendable<T> for #name #ty_generics #where_clause {
-            type H = autd3_core::interface::Empty;
-            type B = autd3_core::interface::Filled;
-
-            fn init(&mut self) -> anyhow::Result<()> {
-                autd3_core::interface::DatagramBody::<T>::init(self)
-            }
-
-            fn pack(
-                &mut self,
-                msg_id: u8,
-                geometry: &autd3_core::geometry::Geometry<T>,
-                tx: &mut autd3_core::TxDatagram,
-            ) -> anyhow::Result<()> {
-                autd3_core::interface::DatagramBody::<T>::pack(self, msg_id, geometry, tx)
-            }
-
-            fn is_finished(&self) -> bool {
-                autd3_core::interface::DatagramBody::<T>::is_finished(self)
             }
         }
     };
