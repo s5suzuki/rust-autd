@@ -39,7 +39,7 @@ impl<T: Transducer> GainSTM<T> {
         }
     }
 
-    pub fn add_gain<G: Gain<T>>(&mut self, gain: G, geometry: &Geometry<T>) -> Result<()> {
+    pub fn add<G: Gain<T>>(&mut self, gain: G, geometry: &Geometry<T>) -> Result<()> {
         if self.gains.len() + 1 > autd3_driver::GAIN_STM_BUF_SIZE_MAX {
             return Err(autd3_driver::FPGAError::GainSTMOutOfBuffer(self.gains.len() + 1).into());
         }

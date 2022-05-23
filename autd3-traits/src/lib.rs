@@ -71,8 +71,6 @@ fn impl_modulation_macro(ast: &syn::DeriveInput) -> TokenStream {
                 msg_id: u8,
                 tx: &mut autd3_core::TxDatagram,
             ) -> anyhow::Result<()> {
-                if self.is_finished() { return Ok(()); }
-
                 let is_first_frame = self.props.sent == 0;
                 let max_size = if is_first_frame {autd3_core::MOD_HEAD_DATA_SIZE} else {autd3_core::MOD_BODY_DATA_SIZE};
                 let mod_size = (self.buffer().len() - self.props.sent).min(max_size);

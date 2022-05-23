@@ -27,7 +27,7 @@ macro_rules! point_stm {
         for i in 0..point_num {
             let theta = 2.0 * std::f64::consts::PI * i as f64 / point_num as f64;
             let p = radius * Vector3::new(theta.cos(), theta.sin(), 0.0);
-            stm.add_point(center + p, 0)?;
+            stm.add(center + p, 0)?;
         }
         stm.set_freq(1.0);
 
@@ -55,7 +55,7 @@ macro_rules! gain_stm {
             let p = radius * Vector3::new(theta.cos(), theta.sin(), 0.0);
 
             let g = Focus::new(center + p);
-            stm.add_gain(g, $autd.geometry())?;
+            stm.add(g, $autd.geometry())?;
         }
         stm.set_freq(1.0);
 

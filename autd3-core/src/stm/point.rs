@@ -43,7 +43,7 @@ impl PointSTM {
         }
     }
 
-    pub fn add_point(&mut self, point: Vector3, duty_shift: u8) -> Result<()> {
+    pub fn add(&mut self, point: Vector3, duty_shift: u8) -> Result<()> {
         if self.control_points.len() + 1 > autd3_driver::POINT_STM_BUF_SIZE_MAX {
             return Err(autd3_driver::FPGAError::PointSTMOutOfBuffer(
                 self.control_points.len() + 1,
@@ -51,17 +51,6 @@ impl PointSTM {
             .into());
         }
         self.control_points.push((point, duty_shift));
-        Ok(())
-    }
-
-    pub fn add_points(&mut self, points: &[(Vector3, u8)]) -> Result<()> {
-        if self.control_points.len() + points.len() > autd3_driver::POINT_STM_BUF_SIZE_MAX {
-            return Err(autd3_driver::FPGAError::PointSTMOutOfBuffer(
-                self.control_points.len() + points.len(),
-            )
-            .into());
-        }
-        self.control_points.extend_from_slice(points);
         Ok(())
     }
 
