@@ -1,6 +1,6 @@
 [package]
 name = "autd3-firmware-emulator"
-version = "2.0.4"
+version = "2.1.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2021"
 
@@ -11,5 +11,5 @@ readme = "README.md"
 keywords = ["autd"]
 
 [dependencies]
-autd3-driver = {path = "../autd3-driver", version="2.0.4"}
+autd3-driver = {path = "../autd3-driver", version="2.1.0"}
 num-integer = "0.1.45"
