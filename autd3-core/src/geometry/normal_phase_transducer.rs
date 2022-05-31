@@ -1,7 +1,7 @@
 /*
- * File: normal_transducer.rs
+ * File: normal_phase_transducer.rs
  * Project: geometry
- * Created Date: 04/05/2022
+ * Created Date: 31/05/2022
  * Author: Shun Suzuki
  * -----
  * Last Modified: 31/05/2022
@@ -17,38 +17,28 @@ use anyhow::{Ok, Result};
 
 use autd3_driver::{Duty, Phase, FPGA_CLK_FREQ, MAX_CYCLE, NUM_TRANS_IN_UNIT};
 
-use crate::error::AUTDInternalError;
+use crate::{error::AUTDInternalError, interface::DatagramBody};
 
-use super::{DriveData, Transducer, Vector3};
+use super::{DriveData, Geometry, Transducer, Vector3};
 
-pub struct NormalDriveData {
+pub struct NormalPhaseDriveData {
     pub phases: Vec<Phase>,
-    pub duties: Vec<Duty>,
 }
 
-impl<T: Transducer> DriveData<T> for NormalDriveData {
+impl<T: Transducer> DriveData<T> for NormalPhaseDriveData {
     fn new() -> Self {
-        Self {
-            phases: vec![],
-            duties: vec![],
-        }
+        Self { phases: vec![] }
     }
 
     fn init(&mut self, size: usize) {
         self.phases.resize(size, Phase { phase: 0x0000 });
-        self.duties.resize(size, Duty { duty: 0x0000 });
     }
 
-    fn set_drive(&mut self, tr: &T, phase: f64, amp: f64) {
-        self.duties[tr.id()].set(amp, tr.cycle());
+    fn set_drive(&mut self, tr: &T, phase: f64, _amp: f64) {
         self.phases[tr.id()].set(phase, tr.cycle());
     }
 
     fn copy_from(&mut self, dev_id: usize, src: &Self) {
-        self.duties[(dev_id * NUM_TRANS_IN_UNIT)..((dev_id + 1) * NUM_TRANS_IN_UNIT)]
-            .copy_from_slice(
-                &src.duties[(dev_id * NUM_TRANS_IN_UNIT)..((dev_id + 1) * NUM_TRANS_IN_UNIT)],
-            );
         self.phases[(dev_id * NUM_TRANS_IN_UNIT)..((dev_id + 1) * NUM_TRANS_IN_UNIT)]
             .copy_from_slice(
                 &src.phases[(dev_id * NUM_TRANS_IN_UNIT)..((dev_id + 1) * NUM_TRANS_IN_UNIT)],
@@ -56,7 +46,7 @@ impl<T: Transducer> DriveData<T> for NormalDriveData {
     }
 }
 
-pub struct NormalTransducer {
+pub struct NormalPhaseTransducer {
     id: usize,
     pos: Vector3,
     x_direction: Vector3,
@@ -65,8 +55,8 @@ pub struct NormalTransducer {
     cycle: u16,
 }
 
-impl Transducer for NormalTransducer {
-    type D = NormalDriveData;
+impl Transducer for NormalPhaseTransducer {
+    type D = NormalPhaseDriveData;
 
     fn new(
         id: usize,
@@ -127,13 +117,9 @@ impl Transducer for NormalTransducer {
         drives: &Self::D,
         tx: &mut autd3_driver::TxDatagram,
     ) -> anyhow::Result<()> {
-        if !*phase_sent {
-            autd3_driver::normal_phase_body(&drives.phases, tx)?;
-            *phase_sent = true;
-        } else {
-            autd3_driver::normal_duty_body(&drives.duties, tx)?;
-            *duty_sent = true;
-        }
+        autd3_driver::normal_phase_body(&drives.phases, tx)?;
+        *phase_sent = true;
+        *duty_sent = true;
         Ok(())
     }
 
@@ -146,7 +132,7 @@ impl Transducer for NormalTransducer {
     }
 }
 
-impl NormalTransducer {
+impl NormalPhaseTransducer {
     pub fn set_cycle(&mut self, cycle: u16) -> Result<()> {
         if cycle > MAX_CYCLE {
             return Err(AUTDInternalError::CycleOutOfRange(cycle).into());
@@ -158,5 +144,53 @@ impl NormalTransducer {
     pub fn set_frequency(&mut self, freq: f64) -> Result<()> {
         let cycle = (FPGA_CLK_FREQ as f64 / freq).round() as u16;
         self.set_cycle(cycle)
+    }
+}
+
+pub struct Amplitudes {
+    pub duties: Vec<Duty>,
+    sent: bool,
+}
+
+impl Amplitudes {
+    pub fn uniform(geometry: &Geometry<NormalPhaseTransducer>, amp: f64) -> Self {
+        let mut duties = vec![];
+        duties.resize(geometry.num_transducers(), Duty { duty: 0x0000 });
+        for (d, tr) in duties.iter_mut().zip(geometry.transducers()) {
+            d.set(amp, tr.cycle());
+        }
+        Self {
+            duties,
+            sent: false,
+        }
+    }
+
+    pub fn none(geometry: &Geometry<NormalPhaseTransducer>) -> Self {
+        Self::uniform(geometry, 0.0)
+    }
+}
+
+impl DatagramBody<NormalPhaseTransducer> for Amplitudes {
+    fn init(&mut self) -> Result<()> {
+        self.sent = false;
+        Ok(())
+    }
+
+    fn pack(
+        &mut self,
+        _geometry: &Geometry<NormalPhaseTransducer>,
+        tx: &mut autd3_driver::TxDatagram,
+    ) -> Result<()> {
+        autd3_driver::normal_head(tx);
+        if self.is_finished() {
+            return Ok(());
+        }
+        self.sent = true;
+        autd3_driver::normal_duty_body(&self.duties, tx)?;
+        Ok(())
+    }
+
+    fn is_finished(&self) -> bool {
+        self.sent
     }
 }

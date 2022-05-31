@@ -14,6 +14,7 @@
 mod builder;
 mod device;
 mod legacy_transducer;
+mod normal_phase_transducer;
 mod normal_transducer;
 mod transducer;
 
@@ -28,6 +29,7 @@ use autd3_driver::NUM_TRANS_IN_UNIT;
 pub use builder::*;
 pub use device::*;
 pub use legacy_transducer::*;
+pub use normal_phase_transducer::*;
 pub use normal_transducer::*;
 pub use transducer::*;
 

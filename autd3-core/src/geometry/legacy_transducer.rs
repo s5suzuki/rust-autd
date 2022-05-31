@@ -37,8 +37,7 @@ impl<T: Transducer> DriveData<T> for LegacyDriveData {
     }
 
     fn set_drive(&mut self, tr: &T, phase: f64, amp: f64) {
-        self.data[tr.id()].duty = (510.0 * amp.asin() / PI) as u8;
-        self.data[tr.id()].phase = (((phase * 256.0).round() as i32) & 0xFF) as u8;
+        self.data[tr.id()].set(amp, phase);
     }
 
     fn copy_from(&mut self, dev_id: usize, src: &Self) {

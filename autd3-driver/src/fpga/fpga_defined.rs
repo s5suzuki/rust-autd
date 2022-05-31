@@ -11,6 +11,8 @@
  *
  */
 
+use std::f64::consts::PI;
+
 pub const FPGA_CLK_FREQ: usize = 163840000;
 
 pub const MAX_CYCLE: u16 = 8191;
@@ -43,16 +45,35 @@ pub struct LegacyDrive {
     pub duty: u8,
 }
 
+impl LegacyDrive {
+    pub fn set(&mut self, amp: f64, phase: f64) {
+        self.duty = (510.0 * amp.asin() / PI) as u8;
+        self.phase = (((phase * 256.0).round() as i32) & 0xFF) as u8;
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct Phase {
     pub phase: u16,
 }
 
+impl Phase {
+    pub fn set(&mut self, phase: f64, cycle: u16) {
+        self.phase = ((phase * cycle as f64).round() as i32).rem_euclid(cycle as i32) as _;
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct Duty {
     pub duty: u16,
+}
+
+impl Duty {
+    pub fn set(&mut self, amp: f64, cycle: u16) {
+        self.duty = (cycle as f64 * amp.asin() / PI) as _;
+    }
 }
 
 #[repr(C)]

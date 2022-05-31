@@ -2,7 +2,7 @@
 
 # AUTD3 library for Rust
 
-[autd3 library](https://github.com/shinolab/autd3-library-software) for Rust
+[autd3 library](https://github.com/shinolab/autd3) for Rust
 
 version: 2.1.0
 
