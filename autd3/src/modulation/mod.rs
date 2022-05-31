@@ -1,13 +1,13 @@
 /*
  * File: mod.rs
  * Project: modulation
- * Created Date: 28/04/2022
+ * Created Date: 31/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 05/05/2022
+ * Last Modified: 31/05/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2022 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Shun Suzuki. All rights reserved.
  *
  */
 
