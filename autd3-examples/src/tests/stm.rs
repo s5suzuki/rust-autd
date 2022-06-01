@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Shun Suzuki. All rights reserved.
@@ -58,6 +58,7 @@ macro_rules! gain_stm {
             stm.add(g, $autd.geometry())?;
         }
         stm.set_freq(1.0);
+        stm.set_mode(Mode::PhaseDutyFull);
 
         let mut m = Static::new(0xFF);
 

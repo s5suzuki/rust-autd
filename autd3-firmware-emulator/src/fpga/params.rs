@@ -4,7 +4,7 @@
  * Created Date: 07/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -39,6 +39,7 @@ pub const ADDR_STM_FREQ_DIV_1: usize = 0x0053;
 pub const ADDR_SOUND_SPEED_0: usize = 0x0054;
 pub const ADDR_SOUND_SPEED_1: usize = 0x0055;
 pub const ADDR_CYCLE_BASE: usize = 0x0100;
+pub const ADDR_MOD_DELAY_BASE: usize = 0x0200;
 
 pub const CTL_REG_LEGACY_MODE_BIT: u16 = 0;
 pub const CTL_REG_FORCE_FAN_BIT: u16 = 4;
@@ -49,5 +50,6 @@ pub const CTL_REG_STM_GAIN_MODE_BIT: u16 = 6;
 pub const ENABLED_STM_BIT: u8 = 0x01;
 pub const ENABLED_MODULATOR_BIT: u8 = 0x02;
 pub const ENABLED_SILENCER_BIT: u8 = 0x04;
+pub const ENABLED_MOD_DELAY_BIT: u8 = 0x08;
 pub const ENABLED_FEATURES_BITS: u8 =
-    ENABLED_STM_BIT | ENABLED_MODULATOR_BIT | ENABLED_SILENCER_BIT;
+    ENABLED_MOD_DELAY_BIT | ENABLED_STM_BIT | ENABLED_MODULATOR_BIT | ENABLED_SILENCER_BIT;

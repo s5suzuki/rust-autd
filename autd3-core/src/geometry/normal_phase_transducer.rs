@@ -4,7 +4,7 @@
  * Created Date: 31/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -17,7 +17,10 @@ use anyhow::{Ok, Result};
 
 use autd3_driver::{Duty, Phase, FPGA_CLK_FREQ, MAX_CYCLE, NUM_TRANS_IN_UNIT};
 
-use crate::{error::AUTDInternalError, interface::DatagramBody};
+use crate::{
+    error::AUTDInternalError,
+    interface::{DatagramBody, Empty, Filled, Sendable},
+};
 
 use super::{DriveData, Geometry, Transducer, Vector3};
 
@@ -53,6 +56,7 @@ pub struct NormalPhaseTransducer {
     y_direction: Vector3,
     z_direction: Vector3,
     cycle: u16,
+    mod_delay: u16,
 }
 
 impl Transducer for NormalPhaseTransducer {
@@ -72,6 +76,7 @@ impl Transducer for NormalPhaseTransducer {
             y_direction,
             z_direction,
             cycle: 4096,
+            mod_delay: 0,
         }
     }
     fn align_phase_at(&self, dist: f64, sound_speed: f64) -> f64 {
@@ -101,6 +106,14 @@ impl Transducer for NormalPhaseTransducer {
 
     fn cycle(&self) -> u16 {
         self.cycle
+    }
+
+    fn mod_delay(&self) -> u16 {
+        self.mod_delay
+    }
+
+    fn set_mod_delay(&mut self, delay: u16) {
+        self.mod_delay = delay;
     }
 
     fn frequency(&self) -> f64 {
@@ -182,7 +195,7 @@ impl DatagramBody<NormalPhaseTransducer> for Amplitudes {
         tx: &mut autd3_driver::TxDatagram,
     ) -> Result<()> {
         autd3_driver::normal_head(tx);
-        if self.is_finished() {
+        if DatagramBody::<NormalPhaseTransducer>::is_finished(self) {
             return Ok(());
         }
         self.sent = true;
@@ -192,5 +205,27 @@ impl DatagramBody<NormalPhaseTransducer> for Amplitudes {
 
     fn is_finished(&self) -> bool {
         self.sent
+    }
+}
+
+impl Sendable<NormalPhaseTransducer> for Amplitudes {
+    type H = Empty;
+    type B = Filled;
+
+    fn init(&mut self) -> Result<()> {
+        DatagramBody::<NormalPhaseTransducer>::init(self)
+    }
+
+    fn pack(
+        &mut self,
+        _msg_id: u8,
+        geometry: &Geometry<NormalPhaseTransducer>,
+        tx: &mut autd3_driver::TxDatagram,
+    ) -> Result<()> {
+        DatagramBody::<NormalPhaseTransducer>::pack(self, geometry, tx)
+    }
+
+    fn is_finished(&self) -> bool {
+        DatagramBody::<NormalPhaseTransducer>::is_finished(self)
     }
 }

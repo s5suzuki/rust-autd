@@ -4,7 +4,7 @@
  * Created Date: 06/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -20,6 +20,10 @@ use crate::fpga::emulator::FPGAEmulator;
 
 use super::params::*;
 
+const GAIN_STM_MODE_PHASE_DUTY_FULL: u16 = 0x0001;
+const GAIN_STM_MODE_PHASE_FULL: u16 = 0x0002;
+const GAIN_STM_MODE_PHASE_HALF: u16 = 0x0004;
+
 pub struct CPUEmulator {
     id: usize,
     pub(crate) msg_id: u8,
@@ -27,6 +31,8 @@ pub struct CPUEmulator {
     mod_cycle: u32,
     stm_cycle: u32,
     pub(crate) fpga: FPGAEmulator,
+    gain_stm_mode: u16,
+    cycles: [u16; NUM_TRANS_IN_UNIT],
 }
 
 impl CPUEmulator {
@@ -38,6 +44,8 @@ impl CPUEmulator {
             mod_cycle: 0,
             stm_cycle: 0,
             fpga: FPGAEmulator::new(),
+            gain_stm_mode: GAIN_STM_MODE_PHASE_DUTY_FULL,
+            cycles: [0x0000; NUM_TRANS_IN_UNIT],
         };
         s.init();
         s
@@ -59,6 +67,7 @@ impl CPUEmulator {
 impl CPUEmulator {
     pub(crate) fn init(&mut self) {
         self.fpga.init();
+        self.cycles = [0x1000; NUM_TRANS_IN_UNIT];
         self.clear();
     }
 
@@ -109,6 +118,8 @@ impl CPUEmulator {
             BRAM_ADDR_EC_SYNC_CYCLE_TICKS,
             ecat_sync_cycle_ticks,
         );
+
+        self.cycles.copy_from_slice(&body.data);
 
         // Do nothing to sync
     }
@@ -180,6 +191,15 @@ impl CPUEmulator {
         let cycle = header.silencer_header().cycle;
         self.bram_write(BRAM_SELECT_CONTROLLER, BRAM_ADDR_SILENT_STEP, step);
         self.bram_write(BRAM_SELECT_CONTROLLER, BRAM_ADDR_SILENT_CYCLE, cycle);
+    }
+
+    fn set_mod_delay(&mut self, body: &Body) {
+        self.bram_cpy(
+            BRAM_SELECT_CONTROLLER,
+            BRAM_ADDR_MOD_DELAY_BASE,
+            body.data.as_ptr(),
+            NUM_TRANS_IN_UNIT,
+        );
     }
 
     fn write_normal_op(&mut self, header: &GlobalHeader, body: &Body) {
@@ -314,23 +334,114 @@ impl CPUEmulator {
                 &freq_div as *const _ as _,
                 std::mem::size_of::<u32>() >> 1,
             );
+            self.gain_stm_mode = body.gain_stm_head().data()[2];
             return;
         }
 
         let mut src = body.gain_stm_body().data().as_ptr();
-
         let mut dst = ((self.stm_cycle & GAIN_STM_BUF_SEGMENT_SIZE_MASK) << 9) as u16;
-        if header.fpga_flag.contains(FPGAControlFlags::LEGACY_MODE) {
-            self.stm_cycle += 1;
-        } else if header.cpu_flag.contains(CPUControlFlags::IS_DUTY) {
-            dst += 1;
-            self.stm_cycle += 1;
+
+        match self.gain_stm_mode {
+            GAIN_STM_MODE_PHASE_DUTY_FULL => {
+                if header.fpga_flag.contains(FPGAControlFlags::LEGACY_MODE) {
+                    self.stm_cycle += 1;
+                } else if header.cpu_flag.contains(CPUControlFlags::IS_DUTY) {
+                    dst += 1;
+                    self.stm_cycle += 1;
+                }
+                (0..NUM_TRANS_IN_UNIT).for_each(|_| unsafe {
+                    self.bram_write(BRAM_SELECT_STM, dst, src.read());
+                    dst += 2;
+                    src = src.add(1);
+                });
+            }
+            GAIN_STM_MODE_PHASE_FULL => {
+                if header.fpga_flag.contains(FPGAControlFlags::LEGACY_MODE) {
+                    (0..NUM_TRANS_IN_UNIT).for_each(|_| unsafe {
+                        self.bram_write(BRAM_SELECT_STM, dst, 0xFF00 | (src.read() & 0x00FF));
+                        dst += 2;
+                        src = src.add(1);
+                    });
+                    self.stm_cycle += 1;
+
+                    let mut src = body.gain_stm_body().data().as_ptr();
+                    let mut dst = ((self.stm_cycle & GAIN_STM_BUF_SEGMENT_SIZE_MASK) << 9) as u16;
+                    (0..NUM_TRANS_IN_UNIT).for_each(|_| unsafe {
+                        self.bram_write(
+                            BRAM_SELECT_STM,
+                            dst,
+                            0xFF00 | ((src.read() >> 8) & 0x00FF),
+                        );
+                        dst += 2;
+                        src = src.add(1);
+                    });
+                    self.stm_cycle += 1;
+                } else if !header.cpu_flag.contains(CPUControlFlags::IS_DUTY) {
+                    (0..NUM_TRANS_IN_UNIT).for_each(|i| unsafe {
+                        self.bram_write(BRAM_SELECT_STM, dst, src.read());
+                        dst += 1;
+                        self.bram_write(BRAM_SELECT_STM, dst, self.cycles[i] >> 1);
+                        dst += 1;
+                        src = src.add(1);
+                    });
+                    self.stm_cycle += 1;
+                }
+            }
+            GAIN_STM_MODE_PHASE_HALF => {
+                if header.fpga_flag.contains(FPGAControlFlags::LEGACY_MODE) {
+                    (0..NUM_TRANS_IN_UNIT).for_each(|_| unsafe {
+                        let phase = src.read() & 0x000F;
+                        self.bram_write(BRAM_SELECT_STM, dst, 0xFF00 | (phase << 4) | phase);
+                        dst += 2;
+                        src = src.add(1);
+                    });
+                    self.stm_cycle += 1;
+
+                    let mut src = body.gain_stm_body().data().as_ptr();
+                    let mut dst = ((self.stm_cycle & GAIN_STM_BUF_SEGMENT_SIZE_MASK) << 9) as u16;
+                    (0..NUM_TRANS_IN_UNIT).for_each(|_| unsafe {
+                        let phase = (src.read() >> 4) & 0x000F;
+                        self.bram_write(BRAM_SELECT_STM, dst, 0xFF00 | (phase << 4) | phase);
+                        dst += 2;
+                        src = src.add(1);
+                    });
+                    self.stm_cycle += 1;
+
+                    let mut src = body.gain_stm_body().data().as_ptr();
+                    let mut dst = ((self.stm_cycle & GAIN_STM_BUF_SEGMENT_SIZE_MASK) << 9) as u16;
+                    (0..NUM_TRANS_IN_UNIT).for_each(|_| unsafe {
+                        let phase = (src.read() >> 8) & 0x000F;
+                        self.bram_write(BRAM_SELECT_STM, dst, 0xFF00 | (phase << 4) | phase);
+                        dst += 2;
+                        src = src.add(1);
+                    });
+                    self.stm_cycle += 1;
+
+                    let mut src = body.gain_stm_body().data().as_ptr();
+                    let mut dst = ((self.stm_cycle & GAIN_STM_BUF_SEGMENT_SIZE_MASK) << 9) as u16;
+                    (0..NUM_TRANS_IN_UNIT).for_each(|_| unsafe {
+                        let phase = (src.read() >> 12) & 0x000F;
+                        self.bram_write(BRAM_SELECT_STM, dst, 0xFF00 | (phase << 4) | phase);
+                        dst += 2;
+                        src = src.add(1);
+                    });
+                    self.stm_cycle += 1;
+                }
+            }
+            _ => {
+                if header.fpga_flag.contains(FPGAControlFlags::LEGACY_MODE) {
+                    self.stm_cycle += 1;
+                } else if header.cpu_flag.contains(CPUControlFlags::IS_DUTY) {
+                    dst += 1;
+                    self.stm_cycle += 1;
+                }
+                (0..NUM_TRANS_IN_UNIT).for_each(|_| unsafe {
+                    self.bram_write(BRAM_SELECT_STM, dst, src.read());
+                    dst += 2;
+                    src = src.add(1);
+                });
+            }
         }
-        (0..NUM_TRANS_IN_UNIT).for_each(|_| unsafe {
-            self.bram_write(BRAM_SELECT_STM, dst, src.read());
-            dst += 2;
-            src = src.add(1);
-        });
 
         if self.stm_cycle & GAIN_STM_BUF_SEGMENT_SIZE_MASK == 0 {
             self.bram_write(
@@ -400,7 +511,7 @@ impl CPUEmulator {
         }
 
         self.msg_id = header.msg_id;
-        let read_fpga_info = header.cpu_flag.contains(CPUControlFlags::READS_FPGA_INFO);
+        let read_fpga_info = header.fpga_flag.contains(FPGAControlFlags::READS_FPGA_INFO);
         if read_fpga_info {
             self.ack = self.read_fpga_info() as _;
         }
@@ -440,6 +551,11 @@ impl CPUEmulator {
                 }
 
                 if !header.cpu_flag.contains(CPUControlFlags::WRITE_BODY) {
+                    return;
+                }
+
+                if header.cpu_flag.contains(CPUControlFlags::MOD_DELAY) {
+                    self.set_mod_delay(body);
                     return;
                 }
 

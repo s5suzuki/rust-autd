@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -21,7 +21,7 @@ use crate::{
         SILENCER_CYCLE_MIN,
     },
     hardware::NUM_TRANS_IN_UNIT,
-    SeqFocus, POINT_STM_BODY_DATA_SIZE, POINT_STM_HEAD_DATA_SIZE, STM_SAMPLING_FREQ_DIV_MIN,
+    Mode, SeqFocus, POINT_STM_BODY_DATA_SIZE, POINT_STM_HEAD_DATA_SIZE, STM_SAMPLING_FREQ_DIV_MIN,
 };
 
 use anyhow::Result;
@@ -46,6 +46,7 @@ pub fn null_header(msg_id: u8, tx: &mut TxDatagram) {
 
 pub fn null_body(tx: &mut TxDatagram) {
     tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::MOD_DELAY);
     tx.num_bodies = 0;
 }
 
@@ -150,8 +151,35 @@ pub fn config_silencer(msg_id: u8, cycle: u16, step: u16, tx: &mut TxDatagram) -
     Ok(())
 }
 
+pub fn mod_delay(delays: &[[u16; NUM_TRANS_IN_UNIT]], tx: &mut TxDatagram) -> Result<()> {
+    if delays.len() != tx.body().len() {
+        return Err(CPUError::DeviceNumberNotCorrect {
+            a: tx.body().len(),
+            b: delays.len(),
+        }
+        .into());
+    }
+
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::WRITE_BODY, true);
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::MOD_DELAY, true);
+
+    tx.body_mut()
+        .iter_mut()
+        .zip(delays.iter())
+        .for_each(|(d, s)| d.data.clone_from(s));
+
+    tx.num_bodies = tx.body().len();
+
+    Ok(())
+}
+
 pub fn normal_legacy_head(tx: &mut TxDatagram) {
     tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::MOD_DELAY);
 
     tx.header_mut()
         .fpga_flag
@@ -186,6 +214,7 @@ pub fn normal_legacy_body(drive: &[LegacyDrive], tx: &mut TxDatagram) -> Result<
 
 pub fn normal_head(tx: &mut TxDatagram) {
     tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::MOD_DELAY);
 
     tx.header_mut()
         .fpga_flag
@@ -245,6 +274,7 @@ pub fn normal_phase_body(drive: &[Phase], tx: &mut TxDatagram) -> Result<()> {
 
 pub fn point_stm_head(tx: &mut TxDatagram) {
     tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::MOD_DELAY);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_BEGIN);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_END);
 
@@ -320,6 +350,7 @@ pub fn point_stm_body(
 
 pub fn gain_stm_legacy_head(tx: &mut TxDatagram) {
     tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::MOD_DELAY);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_BEGIN);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_END);
 
@@ -337,10 +368,11 @@ pub fn gain_stm_legacy_head(tx: &mut TxDatagram) {
 }
 
 pub fn gain_stm_legacy_body(
-    gain: &[LegacyDrive],
+    gain: &[&[LegacyDrive]],
     is_first_frame: bool,
     freq_div: u32,
     is_last_frame: bool,
+    mode: Mode,
     tx: &mut TxDatagram,
 ) -> Result<()> {
     if gain.is_empty() && !is_first_frame {
@@ -360,16 +392,97 @@ pub fn gain_stm_legacy_body(
             .set(CPUControlFlags::STM_BEGIN, true);
         tx.body_mut().iter_mut().for_each(|d| {
             d.gain_stm_head_mut().set_freq_div(freq_div);
+            d.gain_stm_head_mut().set_mode(mode);
         });
     } else {
-        tx.body_mut()
-            .iter_mut()
-            .zip(gain.chunks(NUM_TRANS_IN_UNIT))
-            .for_each(|(d, s)| {
-                d.gain_stm_body_mut()
-                    .legacy_drives_mut()
-                    .clone_from_slice(s);
-            });
+        match mode {
+            Mode::PhaseDutyFull => {
+                tx.body_mut()
+                    .iter_mut()
+                    .zip(gain[0].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(d, s)| {
+                        d.gain_stm_body_mut()
+                            .legacy_drives_mut()
+                            .clone_from_slice(s);
+                    });
+            }
+            Mode::PhaseFull => {
+                tx.body_mut()
+                    .iter_mut()
+                    .zip(gain[0].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(d, s)| {
+                        d.gain_stm_body_mut()
+                            .phase_full_mut()
+                            .iter_mut()
+                            .zip(s.iter())
+                            .for_each(|(dd, ss)| {
+                                dd.phase_0 = ss.phase;
+                            })
+                    });
+                tx.body_mut()
+                    .iter_mut()
+                    .zip(gain[1].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(d, s)| {
+                        d.gain_stm_body_mut()
+                            .phase_full_mut()
+                            .iter_mut()
+                            .zip(s.iter())
+                            .for_each(|(dd, ss)| {
+                                dd.phase_1 = ss.phase;
+                            })
+                    });
+            }
+            Mode::PhaseHalf => {
+                tx.body_mut()
+                    .iter_mut()
+                    .zip(gain[0].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(d, s)| {
+                        d.gain_stm_body_mut()
+                            .phase_half_mut()
+                            .iter_mut()
+                            .zip(s.iter())
+                            .for_each(|(dd, ss)| {
+                                dd.set(0, ss.phase);
+                            })
+                    });
+                tx.body_mut()
+                    .iter_mut()
+                    .zip(gain[1].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(d, s)| {
+                        d.gain_stm_body_mut()
+                            .phase_half_mut()
+                            .iter_mut()
+                            .zip(s.iter())
+                            .for_each(|(dd, ss)| {
+                                dd.set(1, ss.phase);
+                            })
+                    });
+                tx.body_mut()
+                    .iter_mut()
+                    .zip(gain[2].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(d, s)| {
+                        d.gain_stm_body_mut()
+                            .phase_half_mut()
+                            .iter_mut()
+                            .zip(s.iter())
+                            .for_each(|(dd, ss)| {
+                                dd.set(2, ss.phase);
+                            })
+                    });
+                tx.body_mut()
+                    .iter_mut()
+                    .zip(gain[3].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(d, s)| {
+                        d.gain_stm_body_mut()
+                            .phase_half_mut()
+                            .iter_mut()
+                            .zip(s.iter())
+                            .for_each(|(dd, ss)| {
+                                dd.set(3, ss.phase);
+                            })
+                    });
+            }
+        }
     }
 
     if is_last_frame {
@@ -383,6 +496,7 @@ pub fn gain_stm_legacy_body(
 
 pub fn gain_stm_normal_head(tx: &mut TxDatagram) {
     tx.header_mut().cpu_flag.remove(CPUControlFlags::WRITE_BODY);
+    tx.header_mut().cpu_flag.remove(CPUControlFlags::MOD_DELAY);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_BEGIN);
     tx.header_mut().cpu_flag.remove(CPUControlFlags::STM_END);
 
@@ -403,10 +517,16 @@ pub fn gain_stm_normal_phase_body(
     phase: &[Phase],
     is_first_frame: bool,
     freq_div: u32,
+    mode: Mode,
+    is_last_frame: bool,
     tx: &mut TxDatagram,
 ) -> Result<()> {
     if phase.is_empty() && !is_first_frame {
         return Ok(());
+    }
+
+    if mode == Mode::PhaseHalf {
+        return Err(CPUError::PhaseHalfNotSupported.into());
     }
 
     tx.header_mut()
@@ -424,6 +544,7 @@ pub fn gain_stm_normal_phase_body(
             .set(CPUControlFlags::STM_BEGIN, true);
         tx.body_mut().iter_mut().for_each(|d| {
             d.gain_stm_head_mut().set_freq_div(freq_div);
+            d.gain_stm_head_mut().set_mode(mode);
         });
     } else {
         tx.body_mut()
@@ -435,6 +556,10 @@ pub fn gain_stm_normal_phase_body(
     }
 
     tx.num_bodies = tx.body().len();
+
+    if is_last_frame {
+        tx.header_mut().cpu_flag.set(CPUControlFlags::STM_END, true);
+    }
 
     Ok(())
 }
@@ -492,8 +617,8 @@ pub fn force_fan(tx: &mut TxDatagram, value: bool) {
 
 pub fn reads_fpga_info(tx: &mut TxDatagram, value: bool) {
     tx.header_mut()
-        .cpu_flag
-        .set(CPUControlFlags::READS_FPGA_INFO, value);
+        .fpga_flag
+        .set(FPGAControlFlags::READS_FPGA_INFO, value);
 }
 
 pub fn cpu_version(tx: &mut TxDatagram) {

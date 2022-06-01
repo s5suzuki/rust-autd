@@ -4,7 +4,7 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -63,6 +63,7 @@ pub struct NormalTransducer {
     y_direction: Vector3,
     z_direction: Vector3,
     cycle: u16,
+    mod_delay: u16,
 }
 
 impl Transducer for NormalTransducer {
@@ -82,6 +83,7 @@ impl Transducer for NormalTransducer {
             y_direction,
             z_direction,
             cycle: 4096,
+            mod_delay: 0,
         }
     }
     fn align_phase_at(&self, dist: f64, sound_speed: f64) -> f64 {
@@ -135,6 +137,14 @@ impl Transducer for NormalTransducer {
             *duty_sent = true;
         }
         Ok(())
+    }
+
+    fn mod_delay(&self) -> u16 {
+        self.mod_delay
+    }
+
+    fn set_mod_delay(&mut self, delay: u16) {
+        self.mod_delay = delay;
     }
 
     fn wavelength(&self, sound_speed: f64) -> f64 {

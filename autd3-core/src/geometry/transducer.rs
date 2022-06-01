@@ -4,7 +4,7 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -42,6 +42,8 @@ pub trait Transducer: Sized {
     fn z_direction(&self) -> &Vector3;
     fn cycle(&self) -> u16;
     fn frequency(&self) -> f64;
+    fn mod_delay(&self) -> u16;
+    fn set_mod_delay(&mut self, delay: u16);
     fn wavelength(&self, sound_speed: f64) -> f64;
     fn wavenumber(&self, sound_speed: f64) -> f64;
     fn pack_head(tx: &mut TxDatagram);

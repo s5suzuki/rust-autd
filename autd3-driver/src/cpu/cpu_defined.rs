@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -38,6 +38,14 @@ bitflags::bitflags! {
         const STM_BEGIN       = 1 << 4;
         const STM_END         = 1 << 5;
         const IS_DUTY         = 1 << 6;
-        const READS_FPGA_INFO = 1 << 7;
+        const MOD_DELAY       = 1 << 7;
     }
+}
+
+#[repr(u16)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    PhaseDutyFull = 0x0001,
+    PhaseFull = 0x0002,
+    PhaseHalf = 0x0004,
 }

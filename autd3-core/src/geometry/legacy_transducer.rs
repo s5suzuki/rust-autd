@@ -4,7 +4,7 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -54,6 +54,7 @@ pub struct LegacyTransducer {
     x_direction: Vector3,
     y_direction: Vector3,
     z_direction: Vector3,
+    mod_delay: u16,
 }
 
 impl Transducer for LegacyTransducer {
@@ -72,6 +73,7 @@ impl Transducer for LegacyTransducer {
             x_direction,
             y_direction,
             z_direction,
+            mod_delay: 0,
         }
     }
 
@@ -106,6 +108,14 @@ impl Transducer for LegacyTransducer {
 
     fn frequency(&self) -> f64 {
         40e3
+    }
+
+    fn mod_delay(&self) -> u16 {
+        self.mod_delay
+    }
+
+    fn set_mod_delay(&mut self, delay: u16) {
+        self.mod_delay = delay;
     }
 
     fn wavelength(&self, sound_speed: f64) -> f64 {

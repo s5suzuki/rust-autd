@@ -4,7 +4,7 @@
  * Created Date: 28/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -38,7 +38,9 @@ fn main() -> Result<()> {
     ])
     .unwrap();
 
-    let mut geometry = GeometryBuilder::new().legacy_mode().build();
+    // let mut geometry = GeometryBuilder::new().legacy_mode().build();
+    // let mut geometry = GeometryBuilder::new().build();
+    let mut geometry = GeometryBuilder::new().normal_phase_mode().build();
     geometry.add_device(Vector3::zeros(), Vector3::zeros());
     // geometry.add_device(Vector3::zeros(), Vector3::zeros());
 

@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -13,9 +13,10 @@
 
 use std::marker::PhantomData;
 
-use super::{Geometry, LegacyTransducer, NormalTransducer};
+use super::{Geometry, LegacyTransducer, NormalPhaseTransducer, NormalTransducer};
 
 pub struct Normal;
+pub struct NormalPhase;
 pub struct Legacy;
 
 pub struct GeometryBuilder<M> {
@@ -49,6 +50,10 @@ impl GeometryBuilder<Normal> {
         unsafe { std::mem::transmute(self) }
     }
 
+    pub fn normal_phase_mode(self) -> GeometryBuilder<NormalPhase> {
+        unsafe { std::mem::transmute(self) }
+    }
+
     pub fn build(self) -> Geometry<NormalTransducer> {
         Geometry::<NormalTransducer>::new(self.attenuation, self.sound_speed)
     }
@@ -59,8 +64,26 @@ impl GeometryBuilder<Legacy> {
         unsafe { std::mem::transmute(self) }
     }
 
+    pub fn normal_phase_mode(self) -> GeometryBuilder<NormalPhase> {
+        unsafe { std::mem::transmute(self) }
+    }
+
     pub fn build(self) -> Geometry<LegacyTransducer> {
         Geometry::<LegacyTransducer>::new(self.attenuation, self.sound_speed)
+    }
+}
+
+impl GeometryBuilder<NormalPhase> {
+    pub fn normal_mode(self) -> GeometryBuilder<Normal> {
+        unsafe { std::mem::transmute(self) }
+    }
+
+    pub fn legacy_mode(self) -> GeometryBuilder<Legacy> {
+        unsafe { std::mem::transmute(self) }
+    }
+
+    pub fn build(self) -> Geometry<NormalPhaseTransducer> {
+        Geometry::<NormalPhaseTransducer>::new(self.attenuation, self.sound_speed)
     }
 }
 

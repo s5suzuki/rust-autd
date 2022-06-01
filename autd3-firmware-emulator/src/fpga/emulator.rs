@@ -4,7 +4,7 @@
  * Created Date: 06/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -62,7 +62,7 @@ pub struct FPGAEmulator {
 impl FPGAEmulator {
     pub(crate) fn new() -> Self {
         Self {
-            controller_bram: vec![0x0000; 512],
+            controller_bram: vec![0x0000; 1024],
             modulator_bram: vec![0x0000; 32768],
             normal_op_bram: vec![0x0000; 512],
             stm_op_bram: vec![0x0000; 524288],
@@ -144,6 +144,16 @@ impl FPGAEmulator {
 
     pub fn cycles(&self) -> [u16; NUM_TRANS_IN_UNIT] {
         self.controller_bram[ADDR_CYCLE_BASE..]
+            .iter()
+            .take(NUM_TRANS_IN_UNIT)
+            .copied()
+            .collect::<Vec<u16>>()
+            .try_into()
+            .unwrap()
+    }
+
+    pub fn mod_delays(&self) -> [u16; NUM_TRANS_IN_UNIT] {
+        self.controller_bram[ADDR_MOD_DELAY_BASE..]
             .iter()
             .take(NUM_TRANS_IN_UNIT)
             .copied()
