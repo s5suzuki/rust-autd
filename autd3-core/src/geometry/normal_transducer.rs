@@ -4,10 +4,10 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 23/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2022 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Shun Suzuki. All rights reserved.
  *
  */
 
@@ -40,9 +40,8 @@ impl<T: Transducer> DriveData<T> for NormalDriveData {
     }
 
     fn set_drive(&mut self, tr: &T, phase: f64, amp: f64) {
-        self.duties[tr.id()].duty = (tr.cycle() as f64 * amp.asin() / PI) as _;
-        self.phases[tr.id()].phase =
-            ((phase * tr.cycle() as f64).round() as i32).rem_euclid(tr.cycle() as i32) as _;
+        self.duties[tr.id()].set(amp, tr.cycle());
+        self.phases[tr.id()].set(phase, tr.cycle());
     }
 
     fn copy_from(&mut self, dev_id: usize, src: &Self) {
@@ -64,6 +63,7 @@ pub struct NormalTransducer {
     y_direction: Vector3,
     z_direction: Vector3,
     cycle: u16,
+    mod_delay: u16,
 }
 
 impl Transducer for NormalTransducer {
@@ -83,6 +83,7 @@ impl Transducer for NormalTransducer {
             y_direction,
             z_direction,
             cycle: 4096,
+            mod_delay: 0,
         }
     }
     fn align_phase_at(&self, dist: f64, sound_speed: f64) -> f64 {
@@ -136,6 +137,14 @@ impl Transducer for NormalTransducer {
             *duty_sent = true;
         }
         Ok(())
+    }
+
+    fn mod_delay(&self) -> u16 {
+        self.mod_delay
+    }
+
+    fn set_mod_delay(&mut self, delay: u16) {
+        self.mod_delay = delay;
     }
 
     fn wavelength(&self, sound_speed: f64) -> f64 {

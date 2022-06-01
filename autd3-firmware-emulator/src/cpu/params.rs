@@ -4,10 +4,10 @@
  * Created Date: 07/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2022 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Shun Suzuki. All rights reserved.
  *
  */
 
@@ -36,6 +36,7 @@ pub const BRAM_ADDR_STM_CYCLE: u16 = 0x051;
 pub const BRAM_ADDR_STM_FREQ_DIV_0: u16 = 0x052;
 pub const BRAM_ADDR_SOUND_SPEED_0: u16 = 0x054;
 pub const BRAM_ADDR_CYCLE_BASE: u16 = 0x100;
+pub const BRAM_ADDR_MOD_DELAY_BASE: u16 = 0x200;
 
 pub const MOD_BUF_SEGMENT_SIZE_WIDTH: u32 = 15;
 pub const MOD_BUF_SEGMENT_SIZE: u32 = 1 << MOD_BUF_SEGMENT_SIZE_WIDTH;

@@ -4,10 +4,10 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 23/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2022 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Shun Suzuki. All rights reserved.
  *
  */
 
@@ -20,15 +20,16 @@ use anyhow::{Ok, Result};
 use itertools::Itertools;
 
 use autd3_core::{
-    geometry::{Geometry, Transducer},
+    geometry::{Geometry, LegacyTransducer, NormalPhaseTransducer, NormalTransducer, Transducer},
     interface::{DatagramBody, DatagramHeader, Empty, Filled, NullBody, NullHeader, Sendable},
     is_msg_processed,
     link::Link,
+    silencer_config::SilencerConfig,
     FirmwareInfo, RxDatagram, TxDatagram, EC_DEVICE_PER_FRAME, EC_TRAFFIC_DELAY, MSG_BEGIN,
     MSG_END, NUM_TRANS_IN_UNIT,
 };
 
-use crate::{prelude::Null, SilencerConfig};
+use crate::prelude::Null;
 
 static MSG_ID: AtomicU8 = AtomicU8::new(MSG_BEGIN);
 
@@ -224,32 +225,6 @@ impl<L: Link, T: Transducer> Controller<L, T> {
         self.wait_msg_processed(50)
     }
 
-    /// Stop outputting
-    pub fn stop(&mut self) -> Result<bool>
-    where
-        Null<T>: DatagramBody<T>,
-    {
-        let mut config = SilencerConfig::default();
-        let res = self.send(&mut config).flush()?;
-
-        let mut g = Null::new();
-
-        let res = res & self.send(&mut g).flush()?;
-
-        Ok(res)
-    }
-
-    /// Close controller
-    pub fn close(&mut self) -> Result<bool>
-    where
-        Null<T>: DatagramBody<T>,
-    {
-        let res = self.stop()?;
-        let res = res & self.clear()?;
-        self.link.close()?;
-        Ok(res)
-    }
-
     /// Return firmware information of the devices
     pub fn firmware_infos(&mut self) -> Result<Vec<FirmwareInfo>> {
         let check_ack = self.check_ack;
@@ -330,5 +305,71 @@ impl<L: Link, T: Transducer> Controller<L, T> {
         }
 
         Ok(success)
+    }
+}
+
+impl<L: Link> Controller<L, LegacyTransducer> {
+    /// Stop outputting
+    pub fn stop(&mut self) -> Result<bool> {
+        let mut config = SilencerConfig::default();
+        let res = self.send(&mut config).flush()?;
+
+        let mut g = Null::<LegacyTransducer>::new();
+
+        let res = res & self.send(&mut g).flush()?;
+
+        Ok(res)
+    }
+
+    /// Close controller
+    pub fn close(&mut self) -> Result<bool> {
+        let res = self.stop()?;
+        let res = res & self.clear()?;
+        self.link.close()?;
+        Ok(res)
+    }
+}
+
+impl<L: Link> Controller<L, NormalTransducer> {
+    /// Stop outputting
+    pub fn stop(&mut self) -> Result<bool> {
+        let mut config = SilencerConfig::default();
+        let res = self.send(&mut config).flush()?;
+
+        let mut g = Null::<NormalTransducer>::new();
+
+        let res = res & self.send(&mut g).flush()?;
+
+        Ok(res)
+    }
+
+    /// Close controller
+    pub fn close(&mut self) -> Result<bool> {
+        let res = self.stop()?;
+        let res = res & self.clear()?;
+        self.link.close()?;
+        Ok(res)
+    }
+}
+
+impl<L: Link> Controller<L, NormalPhaseTransducer> {
+    /// Stop outputting
+    pub fn stop(&mut self) -> Result<bool> {
+        let mut config = SilencerConfig::default();
+        let res = self.send(&mut config).flush()?;
+
+        let mut g = Null::<NormalPhaseTransducer>::new();
+
+        let res = res & self.send(&mut g).flush()?;
+
+        Ok(res)
+    }
+
+    /// Close controller
+    pub fn close(&mut self) -> Result<bool> {
+        let res = self.stop()?;
+        let res = res & self.clear()?;
+        self.link.close()?;
+        Ok(res)
     }
 }

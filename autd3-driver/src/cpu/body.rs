@@ -4,17 +4,17 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 07/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
- * Copyright (c) 2022 Hapis Lab. All rights reserved.
+ * Copyright (c) 2022 Shun Suzuki. All rights reserved.
  *
  */
 
 use crate::{
     fpga::{Duty, LegacyDrive, Phase},
     hardware::NUM_TRANS_IN_UNIT,
-    POINT_STM_FIXED_NUM_UNIT,
+    Mode, POINT_STM_FIXED_NUM_UNIT,
 };
 
 #[derive(Clone, Copy)]
@@ -173,11 +173,37 @@ impl GainSTMBodyHead {
         self.data[0] = (freq_div & 0x0000FFFF) as _;
         self.data[1] = ((freq_div >> 16) & 0x0000FFFF) as _;
     }
+
+    pub fn set_mode(&mut self, mode: Mode) {
+        self.data[2] = mode as u16;
+    }
 }
 
 #[repr(C)]
 pub struct GainSTMBodyBody {
     data: [u16; NUM_TRANS_IN_UNIT],
+}
+
+pub struct PhaseFull {
+    pub(crate) phase_0: u8,
+    pub(crate) phase_1: u8,
+}
+
+pub struct PhaseHalf {
+    phase_01: u8,
+    phase_23: u8,
+}
+
+impl PhaseHalf {
+    pub fn set(&mut self, idx: usize, phase: u8) {
+        match idx {
+            0 => self.phase_01 = (self.phase_01 & 0xF0) | ((phase >> 4) & 0x0F),
+            1 => self.phase_01 = (self.phase_01 & 0x0F) | (phase & 0xF0),
+            2 => self.phase_23 = (self.phase_23 & 0xF0) | ((phase >> 4) & 0x0F),
+            3 => self.phase_23 = (self.phase_23 & 0x0F) | (phase & 0xF0),
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl GainSTMBodyBody {
@@ -194,6 +220,14 @@ impl GainSTMBodyBody {
     }
 
     pub fn duties_mut(&mut self) -> &mut [Duty; NUM_TRANS_IN_UNIT] {
+        unsafe { std::mem::transmute(&mut self.data) }
+    }
+
+    pub fn phase_full_mut(&mut self) -> &mut [PhaseFull; NUM_TRANS_IN_UNIT] {
+        unsafe { std::mem::transmute(&mut self.data) }
+    }
+
+    pub fn phase_half_mut(&mut self) -> &mut [PhaseHalf; NUM_TRANS_IN_UNIT] {
         unsafe { std::mem::transmute(&mut self.data) }
     }
 }
