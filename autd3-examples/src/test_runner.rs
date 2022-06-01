@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 01/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Shun Suzuki. All rights reserved.
@@ -22,11 +22,11 @@ macro_rules! run {
 
         autd.check_ack = true;
 
-        println!("***** Firmware information *****");
+        println!("*********************************** Firmware information ****************************************");
         autd.firmware_infos()?.iter().for_each(|firm_info| {
             println!("{}", firm_info);
         });
-        println!("********************************");
+        println!("*************************************************************************************************");
 
         autd.clear()?;
 

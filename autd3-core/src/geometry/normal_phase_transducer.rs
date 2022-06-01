@@ -13,7 +13,7 @@
 
 use std::f64::consts::PI;
 
-use anyhow::{Ok, Result};
+use anyhow::Result;
 
 use autd3_driver::{Duty, Phase, FPGA_CLK_FREQ, MAX_CYCLE, NUM_TRANS_IN_UNIT};
 

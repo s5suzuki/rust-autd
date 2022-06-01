@@ -16,8 +16,8 @@ pub use crate::{controller::Controller, gain::*, modulation::*};
 pub use autd3_core::{
     delay::ModDelay,
     geometry::{
-        Geometry, GeometryBuilder, LegacyTransducer, NormalPhaseTransducer, NormalTransducer,
-        Transducer, Vector3,
+        Amplitudes, Geometry, GeometryBuilder, LegacyTransducer, NormalPhaseTransducer,
+        NormalTransducer, Transducer, Vector3,
     },
     link::Link,
     silencer_config::SilencerConfig,

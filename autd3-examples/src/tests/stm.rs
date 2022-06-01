@@ -58,7 +58,6 @@ macro_rules! gain_stm {
             stm.add(g, $autd.geometry())?;
         }
         stm.set_freq(1.0);
-        stm.set_mode(Mode::PhaseDutyFull);
 
         let mut m = Static::new(0xFF);
 
