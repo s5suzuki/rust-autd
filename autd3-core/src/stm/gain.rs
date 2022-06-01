@@ -154,7 +154,7 @@ impl DatagramBody<LegacyTransducer> for GainSTM<LegacyTransducer> {
     }
 
     fn is_finished(&self) -> bool {
-        self.sent >= self.gains.len() + 1
+        self.sent > self.gains.len()
     }
 }
 
