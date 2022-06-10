@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 01/06/2022
+ * Last Modified: 10/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -219,7 +219,7 @@ impl<L: Link, T: Transducer> Controller<L, T> {
             .map(|v| v.try_into().unwrap())
             .collect();
 
-        autd3_core::sync(msg_id, self.link.cycle_ticks(), &cycles, &mut self.tx_buf)?;
+        autd3_core::sync(msg_id, &cycles, &mut self.tx_buf)?;
 
         self.link.send(&self.tx_buf)?;
         self.wait_msg_processed(50)

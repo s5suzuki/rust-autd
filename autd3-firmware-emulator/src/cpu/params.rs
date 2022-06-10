@@ -4,7 +4,7 @@
  * Created Date: 07/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 01/06/2022
+ * Last Modified: 10/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -20,7 +20,6 @@ pub const BRAM_SELECT_STM: u8 = 0x3;
 
 pub const BRAM_ADDR_CTL_REG: u16 = 0x000;
 pub const BRAM_ADDR_FPGA_INFO: u16 = 0x001;
-pub const BRAM_ADDR_EC_SYNC_CYCLE_TICKS: u16 = 0x010;
 // pub const BRAM_ADDR_EC_SYNC_TIME_0: u16 = BRAM_ADDR_EC_SYNC_CYCLE_TICKS + 1;
 // pub const BRAM_ADDR_EC_SYNC_TIME_1: u16 = BRAM_ADDR_EC_SYNC_CYCLE_TICKS + 2;
 // pub const BRAM_ADDR_EC_SYNC_TIME_2: u16 = BRAM_ADDR_EC_SYNC_CYCLE_TICKS + 3;

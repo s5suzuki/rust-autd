@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 10/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -245,10 +245,6 @@ impl<F: 'static + Fn(&str) + Send> Link for SOEM<F> {
         rx.copy_from(&self.rx.lock().unwrap());
 
         Ok(true)
-    }
-
-    fn cycle_ticks(&self) -> u16 {
-        self.config.cycle_ticks
     }
 
     fn is_open(&self) -> bool {

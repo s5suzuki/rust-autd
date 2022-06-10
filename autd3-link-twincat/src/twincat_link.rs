@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 10/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Shun Suzuki. All rights reserved.
@@ -26,11 +26,10 @@ const PORT: u16 = 301;
 pub struct TwinCAT {
     port: i32,
     send_addr: AmsAddr,
-    cycle_ticks: u16,
 }
 
 impl TwinCAT {
-    pub fn new(cycle_ticks: u16) -> Self {
+    pub fn new() -> Self {
         unsafe {
             let ams_addr: AmsAddr = std::mem::zeroed();
             Self {
@@ -39,9 +38,14 @@ impl TwinCAT {
                     net_id: ams_addr.net_id,
                     port: PORT,
                 },
-                cycle_ticks,
             }
         }
+    }
+}
+
+impl Default for TwinCAT {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -111,10 +115,6 @@ impl Link for TwinCAT {
                 Ok(true)
             }
         }
-    }
-
-    fn cycle_ticks(&self) -> u16 {
-        self.cycle_ticks
     }
 
     fn is_open(&self) -> bool {

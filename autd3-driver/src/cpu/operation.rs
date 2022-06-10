@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 01/06/2022
+ * Last Modified: 10/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -50,12 +50,7 @@ pub fn null_body(tx: &mut TxDatagram) {
     tx.num_bodies = 0;
 }
 
-pub fn sync(
-    msg_id: u8,
-    sync_cycle_ticks: u16,
-    cycles: &[[u16; NUM_TRANS_IN_UNIT]],
-    tx: &mut TxDatagram,
-) -> Result<()> {
+pub fn sync(msg_id: u8, cycles: &[[u16; NUM_TRANS_IN_UNIT]], tx: &mut TxDatagram) -> Result<()> {
     if cycles.len() != tx.body().len() {
         return Err(CPUError::DeviceNumberNotCorrect {
             a: tx.body().len(),
@@ -72,7 +67,6 @@ pub fn sync(
     tx.header_mut()
         .cpu_flag
         .set(CPUControlFlags::CONFIG_SYNC, true);
-    tx.header_mut().sync_header_mut().ecat_sync_cycle_ticks = sync_cycle_ticks;
 
     tx.body_mut()
         .iter_mut()

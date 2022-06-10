@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 10/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -24,13 +24,6 @@ pub struct GlobalHeader {
     pub cpu_flag: CPUControlFlags,
     pub size: u8,
     pub data: [u8; 124],
-}
-
-#[repr(C)]
-pub struct SYNC_HEADER {
-    pub ecat_sync_cycle_ticks: u16,
-    _pad: u16,
-    _data: [u8; 120],
 }
 
 #[repr(C)]
@@ -75,14 +68,6 @@ impl GlobalHeader {
     }
 
     pub fn mod_body_mut(&mut self) -> &mut MOD_BODY {
-        unsafe { std::mem::transmute(&mut self.data) }
-    }
-
-    pub fn sync_header(&self) -> &SYNC_HEADER {
-        unsafe { std::mem::transmute(&self.data) }
-    }
-
-    pub fn sync_header_mut(&mut self) -> &mut SYNC_HEADER {
         unsafe { std::mem::transmute(&mut self.data) }
     }
 

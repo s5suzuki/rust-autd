@@ -4,7 +4,7 @@
  * Created Date: 06/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 01/06/2022
+ * Last Modified: 10/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -103,8 +103,7 @@ impl CPUEmulator {
         })
     }
 
-    fn synchronize(&mut self, header: &GlobalHeader, body: &Body) {
-        let ecat_sync_cycle_ticks = header.sync_header().ecat_sync_cycle_ticks;
+    fn synchronize(&mut self, body: &Body) {
         let cycles = body.data;
 
         self.bram_cpy(
@@ -112,11 +111,6 @@ impl CPUEmulator {
             BRAM_ADDR_CYCLE_BASE,
             cycles.as_ptr(),
             NUM_TRANS_IN_UNIT,
-        );
-        self.bram_write(
-            BRAM_SELECT_CONTROLLER,
-            BRAM_ADDR_EC_SYNC_CYCLE_TICKS,
-            ecat_sync_cycle_ticks,
         );
 
         self.cycles.copy_from_slice(&body.data);
@@ -546,7 +540,7 @@ impl CPUEmulator {
                 } else if header.cpu_flag.contains(CPUControlFlags::CONFIG_SILENCER) {
                     self.config_silencer(header);
                 } else if header.cpu_flag.contains(CPUControlFlags::CONFIG_SYNC) {
-                    self.synchronize(header, body);
+                    self.synchronize(body);
                     return;
                 }
 
