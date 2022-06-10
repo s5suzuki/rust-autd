@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 01/06/2022
+ * Last Modified: 10/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -54,6 +54,9 @@ fn get_adapter() -> String {
 fn main() -> Result<()> {
     let mut geometry = GeometryBuilder::new().legacy_mode().build();
     geometry.add_device(Vector3::zeros(), Vector3::zeros());
+    geometry.add_device(Vector3::zeros(), Vector3::zeros());
+    geometry.add_device(Vector3::zeros(), Vector3::zeros());
+    geometry.add_device(Vector3::zeros(), Vector3::zeros());
     // let mut geometry = GeometryBuilder::new().build();
     // geometry.add_device(Vector3::zeros(), Vector3::zeros());
     // geometry
@@ -62,7 +65,7 @@ fn main() -> Result<()> {
 
     let ifname = get_adapter();
     let config = Config {
-        cycle_ticks: 2,
+        cycle_ticks: 1,
         high_precision_timer: true,
     };
     let link = SOEM::new(&ifname, geometry.num_devices() as u16, config, |msg| {
