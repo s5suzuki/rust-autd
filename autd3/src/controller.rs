@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 10/06/2022
+ * Last Modified: 22/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -25,8 +25,7 @@ use autd3_core::{
     is_msg_processed,
     link::Link,
     silencer_config::SilencerConfig,
-    FirmwareInfo, RxDatagram, TxDatagram, EC_DEVICE_PER_FRAME, EC_TRAFFIC_DELAY, MSG_BEGIN,
-    MSG_END, NUM_TRANS_IN_UNIT,
+    FirmwareInfo, RxDatagram, TxDatagram, MSG_BEGIN, MSG_END, NUM_TRANS_IN_UNIT,
 };
 
 use crate::prelude::Null;
@@ -67,13 +66,17 @@ impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Fil
                 .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)?;
             b.pack(&self.cnt.geometry, &mut self.cnt.tx_buf)?;
             self.cnt.link.send(&self.cnt.tx_buf)?;
-            if !self.cnt.wait_msg_processed(50)? {
+            let trials = self.cnt.wait_msg_processed(self.cnt.check_trials)?;
+            if (self.cnt.check_trials != 0) && (trials == self.cnt.check_trials) {
                 self.sent = true;
                 return Ok(false);
             }
             if self.buf.is_finished() && b.is_finished() {
                 break;
             }
+            std::thread::sleep(std::time::Duration::from_micros(
+                self.cnt.send_interval as u64 * autd3_core::EC_SYNC0_CYCLE_TIME_MICRO_SEC as u64,
+            ));
         }
         self.sent = true;
         Ok(true)
@@ -99,13 +102,17 @@ impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Emp
             self.buf
                 .pack(msg_id, &self.cnt.geometry, &mut self.cnt.tx_buf)?;
             self.cnt.link.send(&self.cnt.tx_buf)?;
-            if !self.cnt.wait_msg_processed(50)? {
+            let trials = self.cnt.wait_msg_processed(self.cnt.check_trials)?;
+            if (self.cnt.check_trials != 0) && (trials == self.cnt.check_trials) {
                 self.sent = true;
                 return Ok(false);
             }
             if self.buf.is_finished() && b.is_finished() {
                 break;
             }
+            std::thread::sleep(std::time::Duration::from_micros(
+                self.cnt.send_interval as u64 * autd3_core::EC_SYNC0_CYCLE_TIME_MICRO_SEC as u64,
+            ));
         }
         self.sent = true;
         Ok(true)
@@ -139,9 +146,19 @@ impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>, H, B> Drop for Sender<'a, '
                 if self.cnt.link.send(&self.cnt.tx_buf).is_err() {
                     return;
                 }
-                if !self.cnt.wait_msg_processed(50).unwrap_or(false) || self.buf.is_finished() {
+                if (self
+                    .cnt
+                    .wait_msg_processed(self.cnt.check_trials)
+                    .unwrap_or(self.cnt.check_trials)
+                    == self.cnt.check_trials)
+                    || self.buf.is_finished()
+                {
                     break;
                 }
+                std::thread::sleep(std::time::Duration::from_micros(
+                    self.cnt.send_interval as u64
+                        * autd3_core::EC_SYNC0_CYCLE_TIME_MICRO_SEC as u64,
+                ));
             }
         }
     }
@@ -152,7 +169,8 @@ pub struct Controller<L: Link, T: Transducer> {
     geometry: Geometry<T>,
     tx_buf: TxDatagram,
     rx_buf: RxDatagram,
-    pub check_ack: bool,
+    pub check_trials: usize,
+    pub send_interval: usize,
     pub force_fan: bool,
     pub reads_fpga_info: bool,
 }
@@ -167,7 +185,8 @@ impl<L: Link, T: Transducer> Controller<L, T> {
             geometry,
             tx_buf: TxDatagram::new(num_devices),
             rx_buf: RxDatagram::new(num_devices),
-            check_ack: false,
+            check_trials: 0,
+            send_interval: 1,
             force_fan: false,
             reads_fpga_info: false,
         })
@@ -195,12 +214,9 @@ impl<L: Link, T: Transducer> Controller<L, T> {
 
     /// Clear all data
     pub fn clear(&mut self) -> Result<bool> {
-        let check_ack = self.check_ack;
-        self.check_ack = true;
         autd3_core::clear(&mut self.tx_buf);
         self.link.send(&self.tx_buf)?;
-        let success = self.wait_msg_processed(200)?;
-        self.check_ack = check_ack;
+        let success = self.wait_msg_processed(200)? != 200;
         Ok(success)
     }
 
@@ -222,17 +238,14 @@ impl<L: Link, T: Transducer> Controller<L, T> {
         autd3_core::sync(msg_id, &cycles, &mut self.tx_buf)?;
 
         self.link.send(&self.tx_buf)?;
-        self.wait_msg_processed(50)
+        Ok(self.wait_msg_processed(200)? != 200)
     }
 
     /// Return firmware information of the devices
     pub fn firmware_infos(&mut self) -> Result<Vec<FirmwareInfo>> {
-        let check_ack = self.check_ack;
-        self.check_ack = true;
-
         autd3_core::cpu_version(&mut self.tx_buf);
         self.link.send(&self.tx_buf)?;
-        self.wait_msg_processed(50)?;
+        self.wait_msg_processed(200)?;
         let cpu_versions = self
             .rx_buf
             .messages()
@@ -242,7 +255,7 @@ impl<L: Link, T: Transducer> Controller<L, T> {
 
         autd3_core::fpga_version(&mut self.tx_buf);
         self.link.send(&self.tx_buf)?;
-        self.wait_msg_processed(50)?;
+        self.wait_msg_processed(200)?;
         let fpga_versions = self
             .rx_buf
             .messages()
@@ -252,15 +265,13 @@ impl<L: Link, T: Transducer> Controller<L, T> {
 
         autd3_core::fpga_functions(&mut self.tx_buf);
         self.link.send(&self.tx_buf)?;
-        self.wait_msg_processed(50)?;
+        self.wait_msg_processed(200)?;
         let fpga_functions = self
             .rx_buf
             .messages()
             .iter()
             .map(|rx| rx.ack)
             .collect::<Vec<_>>();
-
-        self.check_ack = check_ack;
 
         Ok((0..self.geometry.num_devices())
             .map(|i| FirmwareInfo::new(0, cpu_versions[i], fpga_versions[i], fpga_functions[i]))
@@ -284,27 +295,18 @@ impl<L: Link, T: Transducer> Controller<L, T> {
         MSG_ID.load(atomic::Ordering::SeqCst)
     }
 
-    fn wait_msg_processed(&mut self, max_trial: usize) -> Result<bool> {
-        if !self.check_ack {
-            return Ok(true);
-        }
+    fn wait_msg_processed(&mut self, max_trial: usize) -> Result<usize> {
         let msg_id = self.tx_buf.header().msg_id;
-        let wait = (EC_TRAFFIC_DELAY * 1000.0 / EC_DEVICE_PER_FRAME as f64
-            * self.geometry.num_devices() as f64)
-            .ceil() as u64;
-        let mut success = false;
+        let wait = self.send_interval as u64 * autd3_core::EC_SYNC0_CYCLE_TIME_MICRO_SEC as u64;
+        let mut i = 0;
         for _ in 0..max_trial {
-            if !self.link.receive(&mut self.rx_buf)? {
-                continue;
-            }
-            if is_msg_processed(msg_id, &self.rx_buf) {
-                success = true;
+            if self.link.receive(&mut self.rx_buf)? && is_msg_processed(msg_id, &self.rx_buf) {
                 break;
             }
             std::thread::sleep(std::time::Duration::from_millis(wait));
+            i += 1;
         }
-
-        Ok(success)
+        Ok(i)
     }
 }
 

@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 22/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -82,7 +82,6 @@ fn main() {
         .allowlist_function("ec_readstate")
         .allowlist_function("ec_reconfig_slave")
         .allowlist_function("ec_recover_slave")
-        .allowlist_function("osal_gettimeofday")
         .allowlist_var("ec_slave")
         .allowlist_var("ec_group")
         .allowlist_var("ec_DCtime")

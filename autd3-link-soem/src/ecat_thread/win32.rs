@@ -4,7 +4,7 @@
  * Created Date: 03/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 22/06/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -25,10 +25,14 @@ use libc::timespec;
 use once_cell::sync::Lazy;
 
 use windows::Win32::{
+    Foundation::FILETIME,
     Media::*,
     Networking::WinSock::timeval,
-    System::Performance::{QueryPerformanceCounter, QueryPerformanceFrequency},
-    System::Threading::*,
+    System::{
+        Performance::{QueryPerformanceCounter, QueryPerformanceFrequency},
+        SystemInformation::GetSystemTimePreciseAsFileTime,
+        Threading::*,
+    },
 };
 
 use crate::{iomap::IOMap, native_methods::*};
@@ -44,6 +48,19 @@ static PERFORMANCE_FREQUENCY: Lazy<i64> = Lazy::new(|| unsafe {
     QueryPerformanceFrequency(&mut freq as *mut _);
     freq
 });
+
+unsafe fn osal_gettimeofday(tv: *mut timeval) {
+    let mut system_time = FILETIME::default();
+    GetSystemTimePreciseAsFileTime(&mut system_time as *mut _);
+
+    let mut system_time64 =
+        ((system_time.dwHighDateTime as i64) << 32) + system_time.dwLowDateTime as i64;
+    system_time64 += -134774i64 * 86400i64 * 1000000i64 * 10i64;
+    let usecs = system_time64 / 10;
+
+    (*tv).tv_sec = (usecs / 1000000) as _;
+    (*tv).tv_usec = (usecs - ((*tv).tv_sec as i64 * 1000000i64)) as _;
+}
 
 fn nanosleep(t: i64) {
     unsafe {
@@ -80,7 +97,7 @@ fn timed_wait(abs_time: &timespec) {
         tv_usec: 0,
     };
     unsafe {
-        osal_gettimeofday(&mut tp as *mut _ as *mut _, std::ptr::null_mut() as *mut _);
+        osal_gettimeofday(&mut tp as *mut _);
     }
 
     let sleep = (abs_time.tv_sec - tp.tv_sec as i64) * 1000000000
@@ -97,15 +114,13 @@ fn timed_wait_h(abs_time: &timespec) {
         tv_usec: 0,
     };
     unsafe {
-        osal_gettimeofday(&mut tp as *mut _ as *mut _, std::ptr::null_mut() as *mut _);
+        osal_gettimeofday(&mut tp as *mut _);
     }
 
     let sleep = (abs_time.tv_sec - tp.tv_sec as i64) * 1000000000
         + (abs_time.tv_nsec - tp.tv_usec * 1000) as i64;
 
-    if sleep > 0 {
-        nanosleep(sleep);
-    }
+    nanosleep(sleep);
 }
 
 pub struct EcatThreadHandler<F: Fn(&str), M> {
@@ -161,7 +176,7 @@ impl<F: Fn(&str) + Send> EcatThreadHandler<F, Normal> {
                 tv_sec: 0,
                 tv_usec: 0,
             };
-            osal_gettimeofday(&mut tp as *mut _ as *mut _, std::ptr::null_mut() as *mut _);
+            osal_gettimeofday(&mut tp as *mut _);
 
             let cyctime_us = (self.cycletime / 1000) as i32;
 
@@ -205,6 +220,13 @@ impl<F: Fn(&str) + Send> EcatThreadHandler<F, Normal> {
 impl<F: Fn(&str) + Send> EcatThreadHandler<F, HighPrecision> {
     pub fn run(&mut self) {
         unsafe {
+            let u_resolution = 1;
+            timeBeginPeriod(u_resolution);
+
+            let h_process = GetCurrentProcess();
+            let priority = GetPriorityClass(h_process);
+            SetPriorityClass(h_process, REALTIME_PRIORITY_CLASS);
+
             let mut ts = timespec {
                 tv_sec: 0,
                 tv_nsec: 0,
@@ -214,7 +236,7 @@ impl<F: Fn(&str) + Send> EcatThreadHandler<F, HighPrecision> {
                 tv_sec: 0,
                 tv_usec: 0,
             };
-            osal_gettimeofday(&mut tp as *mut _ as *mut _, std::ptr::null_mut() as *mut _);
+            osal_gettimeofday(&mut tp as *mut _);
 
             let cyctime_us = (self.cycletime / 1000) as i32;
 
@@ -248,6 +270,9 @@ impl<F: Fn(&str) + Send> EcatThreadHandler<F, HighPrecision> {
 
                 ec_sync(ec_DCtime, self.cycletime, &mut toff);
             }
+
+            timeEndPeriod(1);
+            SetPriorityClass(h_process, PROCESS_CREATION_FLAGS(priority));
         }
     }
 }
