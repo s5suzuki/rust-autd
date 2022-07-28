@@ -4,7 +4,7 @@
  * Created Date: 03/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -27,6 +27,12 @@ use crate::{iomap::IOMap, native_methods::*};
 
 use super::{error_handler::EcatErrorHandler, utils::*};
 
+pub trait Waiter {}
+pub struct NormalWaiter {}
+pub struct HighPrecisionWaiter {}
+impl Waiter for NormalWaiter {}
+impl Waiter for HighPrecisionWaiter {}
+
 fn add_timespec(ts: &mut timespec, addtime: i64) {
     let nsec = addtime % 1000000000;
     let sec = (addtime - nsec) / 1000000000;
@@ -39,7 +45,7 @@ fn add_timespec(ts: &mut timespec, addtime: i64) {
     }
 }
 
-pub struct EcatThreadHandler<F: Fn(&str), M> {
+pub struct EcatThreadHandler<F: Fn(&str), W: Waiter> {
     pub io_map: Box<IOMap>,
     pub is_running: Arc<AtomicBool>,
     pub receiver: Receiver<TxDatagram>,
@@ -47,10 +53,10 @@ pub struct EcatThreadHandler<F: Fn(&str), M> {
     pub expected_wkc: i32,
     pub cycletime: i64,
     pub error_handler: EcatErrorHandler<F>,
-    _phantom_data: PhantomData<M>,
+    _phantom_data: PhantomData<W>,
 }
 
-impl<F: Fn(&str) + Send, M> EcatThreadHandler<F, M> {
+impl<F: Fn(&str) + Send, W: Waiter> EcatThreadHandler<F, W> {
     pub fn new(
         io_map: Box<IOMap>,
         is_running: Arc<AtomicBool>,

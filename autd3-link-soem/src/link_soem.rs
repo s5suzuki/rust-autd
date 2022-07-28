@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 10/06/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -30,7 +30,7 @@ use autd3_core::{
 };
 
 use crate::{
-    ecat_thread::{EcatErrorHandler, EcatThreadHandler, HighPrecision, Normal},
+    ecat_thread::{EcatErrorHandler, EcatThreadHandler, HighPrecisionWaiter, NormalWaiter},
     error::SOEMError,
     iomap::IOMap,
     native_methods::*,
@@ -142,7 +142,7 @@ impl<F: 'static + Fn(&str) + Send> Link for SOEM<F> {
             self.ecatth_handle = Some(std::thread::spawn(move || {
                 let error_handler = EcatErrorHandler { error_handle };
                 if is_high_precision {
-                    let mut callback = EcatThreadHandler::<_, HighPrecision>::new(
+                    let mut callback = EcatThreadHandler::<_, HighPrecisionWaiter>::new(
                         io_map,
                         thread_running,
                         tx_receiver,
@@ -153,7 +153,7 @@ impl<F: 'static + Fn(&str) + Send> Link for SOEM<F> {
                     );
                     callback.run();
                 } else {
-                    let mut callback = EcatThreadHandler::<_, Normal>::new(
+                    let mut callback = EcatThreadHandler::<_, NormalWaiter>::new(
                         io_map,
                         thread_running,
                         tx_receiver,

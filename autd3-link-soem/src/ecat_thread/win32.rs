@@ -4,7 +4,7 @@
  * Created Date: 03/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 22/06/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -26,22 +26,16 @@ use once_cell::sync::Lazy;
 
 use windows::Win32::{
     Foundation::FILETIME,
-    Media::*,
     Networking::WinSock::timeval,
     System::{
         Performance::{QueryPerformanceCounter, QueryPerformanceFrequency},
         SystemInformation::GetSystemTimePreciseAsFileTime,
-        Threading::*,
     },
 };
 
 use crate::{iomap::IOMap, native_methods::*};
 
-use super::{
-    error_handler::EcatErrorHandler,
-    mode::{HighPrecision, Normal},
-    utils::*,
-};
+use super::{error_handler::EcatErrorHandler, utils::*};
 
 static PERFORMANCE_FREQUENCY: Lazy<i64> = Lazy::new(|| unsafe {
     let mut freq = 0;
@@ -91,39 +85,49 @@ fn add_timespec(ts: &mut timespec, addtime: i64) {
     }
 }
 
-fn timed_wait(abs_time: &timespec) {
-    let mut tp = timeval {
-        tv_sec: 0,
-        tv_usec: 0,
-    };
-    unsafe {
-        osal_gettimeofday(&mut tp as *mut _);
-    }
+pub trait Waiter {
+    fn timed_wait(abs_time: &timespec);
+}
+pub struct NormalWaiter {}
+pub struct HighPrecisionWaiter {}
 
-    let sleep = (abs_time.tv_sec - tp.tv_sec as i64) * 1000000000
-        + (abs_time.tv_nsec - tp.tv_usec * 1000) as i64;
+impl Waiter for NormalWaiter {
+    fn timed_wait(abs_time: &timespec) {
+        let mut tp = timeval {
+            tv_sec: 0,
+            tv_usec: 0,
+        };
+        unsafe {
+            osal_gettimeofday(&mut tp as *mut _);
+        }
 
-    if sleep > 0 {
-        std::thread::sleep(std::time::Duration::from_nanos(sleep as _));
+        let sleep = (abs_time.tv_sec - tp.tv_sec as i64) * 1000000000
+            + (abs_time.tv_nsec - tp.tv_usec * 1000) as i64;
+
+        if sleep > 0 {
+            std::thread::sleep(std::time::Duration::from_nanos(sleep as _));
+        }
     }
 }
 
-fn timed_wait_h(abs_time: &timespec) {
-    let mut tp = timeval {
-        tv_sec: 0,
-        tv_usec: 0,
-    };
-    unsafe {
-        osal_gettimeofday(&mut tp as *mut _);
+impl Waiter for HighPrecisionWaiter {
+    fn timed_wait(abs_time: &timespec) {
+        let mut tp = timeval {
+            tv_sec: 0,
+            tv_usec: 0,
+        };
+        unsafe {
+            osal_gettimeofday(&mut tp as *mut _);
+        }
+
+        let sleep = (abs_time.tv_sec - tp.tv_sec as i64) * 1000000000
+            + (abs_time.tv_nsec - tp.tv_usec * 1000) as i64;
+
+        nanosleep(sleep);
     }
-
-    let sleep = (abs_time.tv_sec - tp.tv_sec as i64) * 1000000000
-        + (abs_time.tv_nsec - tp.tv_usec * 1000) as i64;
-
-    nanosleep(sleep);
 }
 
-pub struct EcatThreadHandler<F: Fn(&str), M> {
+pub struct EcatThreadHandler<F: Fn(&str), W: Waiter> {
     io_map: Box<IOMap>,
     is_running: Arc<AtomicBool>,
     receiver: Receiver<TxDatagram>,
@@ -131,10 +135,10 @@ pub struct EcatThreadHandler<F: Fn(&str), M> {
     expected_wkc: i32,
     cycletime: i64,
     error_handler: EcatErrorHandler<F>,
-    _phantom_data: PhantomData<M>,
+    _phantom_data: PhantomData<W>,
 }
 
-impl<F: Fn(&str) + Send, M> EcatThreadHandler<F, M> {
+impl<F: Fn(&str) + Send, W: Waiter> EcatThreadHandler<F, W> {
     pub fn new(
         io_map: Box<IOMap>,
         is_running: Arc<AtomicBool>,
@@ -155,18 +159,9 @@ impl<F: Fn(&str) + Send, M> EcatThreadHandler<F, M> {
             _phantom_data: PhantomData,
         }
     }
-}
 
-impl<F: Fn(&str) + Send> EcatThreadHandler<F, Normal> {
     pub fn run(&mut self) {
         unsafe {
-            let u_resolution = 1;
-            timeBeginPeriod(u_resolution);
-
-            let h_process = GetCurrentProcess();
-            let priority = GetPriorityClass(h_process);
-            SetPriorityClass(h_process, REALTIME_PRIORITY_CLASS);
-
             let mut ts = timespec {
                 tv_sec: 0,
                 tv_nsec: 0,
@@ -188,7 +183,7 @@ impl<F: Fn(&str) + Send> EcatThreadHandler<F, Normal> {
             while self.is_running.load(Ordering::Acquire) {
                 add_timespec(&mut ts, self.cycletime + toff);
 
-                timed_wait(&ts);
+                W::timed_wait(&ts);
 
                 if ec_slave[0].state == ec_state_EC_STATE_SAFE_OP as _ {
                     ec_slave[0].state = ec_state_EC_STATE_OPERATIONAL as _;
@@ -210,69 +205,6 @@ impl<F: Fn(&str) + Send> EcatThreadHandler<F, Normal> {
 
                 ec_sync(ec_DCtime, self.cycletime, &mut toff);
             }
-
-            timeEndPeriod(1);
-            SetPriorityClass(h_process, PROCESS_CREATION_FLAGS(priority));
-        }
-    }
-}
-
-impl<F: Fn(&str) + Send> EcatThreadHandler<F, HighPrecision> {
-    pub fn run(&mut self) {
-        unsafe {
-            let u_resolution = 1;
-            timeBeginPeriod(u_resolution);
-
-            let h_process = GetCurrentProcess();
-            let priority = GetPriorityClass(h_process);
-            SetPriorityClass(h_process, REALTIME_PRIORITY_CLASS);
-
-            let mut ts = timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            };
-
-            let mut tp = timeval {
-                tv_sec: 0,
-                tv_usec: 0,
-            };
-            osal_gettimeofday(&mut tp as *mut _);
-
-            let cyctime_us = (self.cycletime / 1000) as i32;
-
-            ts.tv_sec = tp.tv_sec as _;
-            let ht = ((tp.tv_usec / cyctime_us) + 1) * cyctime_us;
-            ts.tv_nsec = ht * 1000;
-
-            let mut toff = 0;
-            while self.is_running.load(Ordering::Acquire) {
-                add_timespec(&mut ts, self.cycletime + toff);
-
-                timed_wait_h(&ts);
-
-                if ec_slave[0].state == ec_state_EC_STATE_SAFE_OP as _ {
-                    ec_slave[0].state = ec_state_EC_STATE_OPERATIONAL as _;
-                    ec_writestate(0);
-                }
-
-                if let Ok(tx) = self.receiver.try_recv() {
-                    self.io_map.copy_from(tx);
-                }
-
-                ec_send_processdata();
-                if ec_receive_processdata(EC_TIMEOUTRET as i32) != self.expected_wkc
-                    && !self.error_handler.handle()
-                {
-                    return;
-                }
-
-                self.sender.send(self.io_map.input()).unwrap();
-
-                ec_sync(ec_DCtime, self.cycletime, &mut toff);
-            }
-
-            timeEndPeriod(1);
-            SetPriorityClass(h_process, PROCESS_CREATION_FLAGS(priority));
         }
     }
 }
