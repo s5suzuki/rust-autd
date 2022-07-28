@@ -4,7 +4,7 @@
  * Created Date: 03/06/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Shun Suzuki. All rights reserved.
@@ -13,11 +13,11 @@
 
 use std::f64::consts::PI;
 
-use crate::{macros::propagate, Complex};
+use crate::{constraint::Constraint, macros::propagate, Complex};
 use anyhow::Result;
 use autd3_core::{
     gain::{Gain, GainProps, IGain},
-    geometry::{DriveData, Geometry, Transducer, Vector3},
+    geometry::{Geometry, Transducer, Vector3},
 };
 use autd3_traits::Gain;
 use nalgebra::ComplexField;
@@ -25,19 +25,20 @@ use nalgebra::ComplexField;
 /// Reference
 /// * Shun Suzuki, Masahiro Fujiwara, Yasutoshi Makino, and Hiroyuki Shinoda, “Radiation Pressure Field Reconstruction for Ultrasound Midair Haptics by Greedy Algorithm with Brute-Force Search,” in IEEE Transactions on Haptics, doi: 10.1109/TOH.2021.3076489
 #[derive(Gain)]
-pub struct Greedy<T: Transducer> {
+pub struct Greedy<T: Transducer, C: Constraint> {
     props: GainProps<T>,
     foci: Vec<Vector3>,
     amps: Vec<f64>,
     phase_candidates: Vec<Complex>,
+    constraint: C,
 }
 
-impl<T: Transducer> Greedy<T> {
-    pub fn new(foci: Vec<Vector3>, amps: Vec<f64>) -> Self {
-        Self::with_param(foci, amps, 16)
+impl<T: Transducer, C: Constraint> Greedy<T, C> {
+    pub fn new(foci: Vec<Vector3>, amps: Vec<f64>, constraint: C) -> Self {
+        Self::with_param(foci, amps, constraint, 16)
     }
 
-    pub fn with_param(foci: Vec<Vector3>, amps: Vec<f64>, phase_div: usize) -> Self {
+    pub fn with_param(foci: Vec<Vector3>, amps: Vec<f64>, constraint: C, phase_div: usize) -> Self {
         assert!(foci.len() == amps.len());
         let mut phase_candidates = Vec::with_capacity(phase_div);
         for i in 0..phase_div {
@@ -48,11 +49,12 @@ impl<T: Transducer> Greedy<T> {
             foci,
             amps,
             phase_candidates,
+            constraint,
         }
     }
 }
 
-impl<T: Transducer> IGain<T> for Greedy<T> {
+impl<T: Transducer, C: Constraint> IGain<T> for Greedy<T, C> {
     fn calc(&mut self, geometry: &Geometry<T>) -> Result<()> {
         let m = self.foci.len();
 
@@ -110,7 +112,9 @@ impl<T: Transducer> IGain<T> for Greedy<T> {
             }
 
             let phase = self.phase_candidates[min_idx].argument() / (2.0 * PI) + 0.5;
-            self.props.drives.set_drive(trans, phase, 1.0);
+            let amp = self.constraint.convert(1.0, 1.0);
+            self.props.drives[trans.id()].amp = amp;
+            self.props.drives[trans.id()].phase = phase;
         });
         Ok(())
     }

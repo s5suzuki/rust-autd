@@ -4,7 +4,7 @@
  * Created Date: 31/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 01/06/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -15,39 +15,14 @@ use std::f64::consts::PI;
 
 use anyhow::Result;
 
-use autd3_driver::{Duty, Phase, FPGA_CLK_FREQ, MAX_CYCLE, NUM_TRANS_IN_UNIT};
+use autd3_driver::{Drive, FPGA_CLK_FREQ, MAX_CYCLE};
 
 use crate::{
     error::AUTDInternalError,
     interface::{DatagramBody, Empty, Filled, Sendable},
 };
 
-use super::{DriveData, Geometry, Transducer, Vector3};
-
-pub struct NormalPhaseDriveData {
-    pub phases: Vec<Phase>,
-}
-
-impl<T: Transducer> DriveData<T> for NormalPhaseDriveData {
-    fn new() -> Self {
-        Self { phases: vec![] }
-    }
-
-    fn init(&mut self, size: usize) {
-        self.phases.resize(size, Phase { phase: 0x0000 });
-    }
-
-    fn set_drive(&mut self, tr: &T, phase: f64, _amp: f64) {
-        self.phases[tr.id()].set(phase, tr.cycle());
-    }
-
-    fn copy_from(&mut self, dev_id: usize, src: &Self) {
-        self.phases[(dev_id * NUM_TRANS_IN_UNIT)..((dev_id + 1) * NUM_TRANS_IN_UNIT)]
-            .copy_from_slice(
-                &src.phases[(dev_id * NUM_TRANS_IN_UNIT)..((dev_id + 1) * NUM_TRANS_IN_UNIT)],
-            );
-    }
-}
+use super::{Geometry, Transducer, Vector3};
 
 pub struct NormalPhaseTransducer {
     id: usize,
@@ -60,8 +35,6 @@ pub struct NormalPhaseTransducer {
 }
 
 impl Transducer for NormalPhaseTransducer {
-    type D = NormalPhaseDriveData;
-
     fn new(
         id: usize,
         pos: Vector3,
@@ -127,10 +100,10 @@ impl Transducer for NormalPhaseTransducer {
     fn pack_body(
         phase_sent: &mut bool,
         duty_sent: &mut bool,
-        drives: &Self::D,
+        drives: &[Drive],
         tx: &mut autd3_driver::TxDatagram,
     ) -> anyhow::Result<()> {
-        autd3_driver::normal_phase_body(&drives.phases, tx)?;
+        autd3_driver::normal_phase_body(drives, tx)?;
         *phase_sent = true;
         *duty_sent = true;
         Ok(())
@@ -161,19 +134,21 @@ impl NormalPhaseTransducer {
 }
 
 pub struct Amplitudes {
-    pub duties: Vec<Duty>,
+    pub drives: Vec<Drive>,
     sent: bool,
 }
 
 impl Amplitudes {
     pub fn uniform(geometry: &Geometry<NormalPhaseTransducer>, amp: f64) -> Self {
-        let mut duties = vec![];
-        duties.resize(geometry.num_transducers(), Duty { duty: 0x0000 });
-        for (d, tr) in duties.iter_mut().zip(geometry.transducers()) {
-            d.set(amp, tr.cycle());
-        }
         Self {
-            duties,
+            drives: geometry
+                .transducers()
+                .map(|tr| Drive {
+                    phase: 0.0,
+                    amp,
+                    cycle: tr.cycle,
+                })
+                .collect(),
             sent: false,
         }
     }
@@ -199,7 +174,7 @@ impl DatagramBody<NormalPhaseTransducer> for Amplitudes {
             return Ok(());
         }
         self.sent = true;
-        autd3_driver::normal_duty_body(&self.duties, tx)?;
+        autd3_driver::normal_duty_body(&self.drives, tx)?;
         Ok(())
     }
 

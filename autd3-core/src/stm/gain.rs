@@ -4,12 +4,14 @@
  * Created Date: 05/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 01/06/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
  *
  */
+
+use std::marker::PhantomData;
 
 use crate::{
     gain::Gain,
@@ -18,16 +20,17 @@ use crate::{
 };
 
 use anyhow::{Ok, Result};
-use autd3_driver::{Mode, TxDatagram, FPGA_CLK_FREQ, STM_SAMPLING_FREQ_DIV_MIN};
+use autd3_driver::{Drive, Mode, TxDatagram, FPGA_CLK_FREQ, STM_SAMPLING_FREQ_DIV_MIN};
 
 use super::STM;
 
 pub struct GainSTM<T: Transducer> {
-    gains: Vec<T::D>,
+    gains: Vec<Vec<Drive>>,
     sample_freq_div: u32,
     next_duty: bool,
     sent: usize,
     mode: Mode,
+    _t: PhantomData<T>,
 }
 
 impl<T: Transducer> GainSTM<T> {
@@ -38,6 +41,7 @@ impl<T: Transducer> GainSTM<T> {
             next_duty: false,
             sent: 0,
             mode: Mode::PhaseDutyFull,
+            _t: PhantomData,
         }
     }
 
@@ -107,7 +111,7 @@ impl DatagramBody<LegacyTransducer> for GainSTM<LegacyTransducer> {
             Mode::PhaseDutyFull => {
                 let is_last_frame = self.sent + 1 == self.gains.len() + 1;
                 autd3_driver::gain_stm_legacy_body(
-                    &[&self.gains[self.sent - 1].data],
+                    &[&self.gains[self.sent - 1]],
                     is_first_frame,
                     self.sample_freq_div,
                     is_last_frame,
@@ -120,8 +124,8 @@ impl DatagramBody<LegacyTransducer> for GainSTM<LegacyTransducer> {
                 let is_last_frame = self.sent + 2 >= self.gains.len() + 1;
                 autd3_driver::gain_stm_legacy_body(
                     &[
-                        &self.gains[self.sent - 1].data,
-                        self.gains.get(self.sent + 1 - 1).map_or(&[], |g| &g.data),
+                        &self.gains[self.sent - 1],
+                        self.gains.get(self.sent + 1 - 1).unwrap_or(&Vec::new()),
                     ],
                     is_first_frame,
                     self.sample_freq_div,
@@ -135,10 +139,10 @@ impl DatagramBody<LegacyTransducer> for GainSTM<LegacyTransducer> {
                 let is_last_frame = self.sent + 4 >= self.gains.len() + 1;
                 autd3_driver::gain_stm_legacy_body(
                     &[
-                        &self.gains[self.sent - 1].data,
-                        self.gains.get(self.sent + 1 - 1).map_or(&[], |g| &g.data),
-                        self.gains.get(self.sent + 2 - 1).map_or(&[], |g| &g.data),
-                        self.gains.get(self.sent + 3 - 1).map_or(&[], |g| &g.data),
+                        &self.gains[self.sent - 1],
+                        self.gains.get(self.sent + 1 - 1).unwrap_or(&Vec::new()),
+                        self.gains.get(self.sent + 2 - 1).unwrap_or(&Vec::new()),
+                        self.gains.get(self.sent + 3 - 1).unwrap_or(&Vec::new()),
                     ],
                     is_first_frame,
                     self.sample_freq_div,
@@ -199,7 +203,7 @@ impl DatagramBody<NormalTransducer> for GainSTM<NormalTransducer> {
                 self.sent - 1
             };
             autd3_driver::gain_stm_normal_phase_body(
-                &self.gains[idx].phases,
+                &self.gains[idx],
                 is_first_frame,
                 self.sample_freq_div,
                 self.mode,
@@ -208,9 +212,7 @@ impl DatagramBody<NormalTransducer> for GainSTM<NormalTransducer> {
             )?;
         } else {
             autd3_driver::gain_stm_normal_duty_body(
-                &self.gains[(self.sent - 1) / 2].duties,
-                is_first_frame,
-                self.sample_freq_div,
+                &self.gains[(self.sent - 1) / 2],
                 is_last_frame,
                 tx,
             )?;
@@ -269,7 +271,7 @@ impl DatagramBody<NormalPhaseTransducer> for GainSTM<NormalPhaseTransducer> {
 
         let idx = self.sent - 1;
         autd3_driver::gain_stm_normal_phase_body(
-            &self.gains[idx].phases,
+            &self.gains[idx],
             is_first_frame,
             self.sample_freq_div,
             self.mode,

@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 22/06/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -303,7 +303,7 @@ impl<L: Link, T: Transducer> Controller<L, T> {
             if self.link.receive(&mut self.rx_buf)? && is_msg_processed(msg_id, &self.rx_buf) {
                 break;
             }
-            std::thread::sleep(std::time::Duration::from_millis(wait));
+            std::thread::sleep(std::time::Duration::from_micros(wait));
             i += 1;
         }
         Ok(i)

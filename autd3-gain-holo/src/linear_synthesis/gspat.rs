@@ -4,18 +4,21 @@
  * Created Date: 29/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Shun Suzuki. All rights reserved.
  *
  */
 
-use crate::{macros::generate_propagation_matrix, Backend, Complex, MatrixXc, Transpose, VectorXc};
+use crate::{
+    constraint::Constraint, macros::generate_propagation_matrix, Backend, Complex, MatrixXc,
+    Transpose, VectorXc,
+};
 use anyhow::Result;
 use autd3_core::{
     gain::{Gain, GainProps, IGain},
-    geometry::{DriveData, Geometry, Transducer, Vector3},
+    geometry::{Geometry, Transducer, Vector3},
     NUM_TRANS_IN_UNIT,
 };
 use autd3_traits::Gain;
@@ -27,20 +30,21 @@ use std::{f64::consts::PI, marker::PhantomData};
 ///
 /// Not yet been implemented with GPU.
 #[derive(Gain)]
-pub struct GSPAT<B: Backend, T: Transducer> {
+pub struct GSPAT<B: Backend, T: Transducer, C: Constraint> {
     props: GainProps<T>,
     foci: Vec<Vector3>,
     amps: Vec<f64>,
     repeat: usize,
     backend: PhantomData<B>,
+    constraint: C,
 }
 
-impl<B: Backend, T: Transducer> GSPAT<B, T> {
-    pub fn new(foci: Vec<Vector3>, amps: Vec<f64>) -> Self {
-        Self::with_param(foci, amps, 100)
+impl<B: Backend, T: Transducer, C: Constraint> GSPAT<B, T, C> {
+    pub fn new(foci: Vec<Vector3>, amps: Vec<f64>, constraint: C) -> Self {
+        Self::with_param(foci, amps, constraint, 100)
     }
 
-    pub fn with_param(foci: Vec<Vector3>, amps: Vec<f64>, repeat: usize) -> Self {
+    pub fn with_param(foci: Vec<Vector3>, amps: Vec<f64>, constraint: C, repeat: usize) -> Self {
         assert!(foci.len() == amps.len());
         Self {
             props: GainProps::default(),
@@ -48,11 +52,12 @@ impl<B: Backend, T: Transducer> GSPAT<B, T> {
             amps,
             repeat,
             backend: PhantomData,
+            constraint,
         }
     }
 }
 
-impl<B: Backend, T: Transducer> IGain<T> for GSPAT<B, T> {
+impl<B: Backend, T: Transducer, C: Constraint> IGain<T> for GSPAT<B, T, C> {
     fn calc(&mut self, geometry: &Geometry<T>) -> Result<()> {
         let m = self.foci.len();
         let n = geometry.num_devices() * NUM_TRANS_IN_UNIT;
@@ -114,9 +119,12 @@ impl<B: Backend, T: Transducer> IGain<T> for GSPAT<B, T> {
             &mut q,
         );
 
+        let max_coefficient = B::max_coefficient_c(&q).abs();
         geometry.transducers().for_each(|tr| {
             let phase = q[tr.id()].argument() / (2.0 * PI) + 0.5;
-            self.props.drives.set_drive(tr, phase, 1.0);
+            let amp = self.constraint.convert(q[tr.id()].abs(), max_coefficient);
+            self.props.drives[tr.id()].amp = amp;
+            self.props.drives[tr.id()].phase = phase;
         });
 
         Ok(())
