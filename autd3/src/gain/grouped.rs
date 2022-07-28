@@ -4,7 +4,7 @@
  * Created Date: 05/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -15,7 +15,7 @@ use std::collections::HashMap;
 
 use autd3_core::{
     gain::{Gain, GainProps, IGain},
-    geometry::{DriveData, Geometry, Transducer},
+    geometry::{Geometry, Transducer},
 };
 
 use autd3_traits::Gain;
@@ -57,7 +57,9 @@ where
                 return Err(AUTDError::GroupedOutOfRange(*dev_id, geometry.num_devices()).into());
             }
 
-            self.props.drives.copy_from(*dev_id, gain.drives());
+            self.props.drives[*dev_id..(*dev_id + autd3_core::NUM_TRANS_IN_UNIT)].copy_from_slice(
+                &gain.drives()[*dev_id..(*dev_id + autd3_core::NUM_TRANS_IN_UNIT)],
+            );
 
             Ok(())
         })

@@ -4,7 +4,7 @@
  * Created Date: 29/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Shun Suzuki. All rights reserved.
@@ -12,13 +12,13 @@
  */
 
 use crate::{
-    error::HoloError, macros::generate_propagation_matrix, Backend, Complex, MatrixX, MatrixXc,
-    Transpose, VectorX, VectorXc,
+    constraint::Constraint, error::HoloError, macros::generate_propagation_matrix, Backend,
+    Complex, MatrixX, MatrixXc, Transpose, VectorX, VectorXc,
 };
 use anyhow::Result;
 use autd3_core::{
     gain::{Gain, GainProps, IGain},
-    geometry::{DriveData, Geometry, Transducer, Vector3},
+    geometry::{Geometry, Transducer, Vector3},
     NUM_TRANS_IN_UNIT,
 };
 use autd3_traits::Gain;
@@ -30,7 +30,7 @@ use std::{f64::consts::PI, marker::PhantomData};
 /// * D.W.Marquardt, “An algorithm for least-squares estimation of non-linear parameters,” Journal of the society for Industrial and AppliedMathematics, vol.11, no.2, pp.431–441, 1963.
 /// * K.Madsen, H.Nielsen, and O.Tingleff, “Methods for non-linear least squares problems (2nd ed.),” 2004.
 #[derive(Gain)]
-pub struct LM<B: Backend, T: Transducer> {
+pub struct LM<B: Backend, T: Transducer, C: Constraint> {
     props: GainProps<T>,
     foci: Vec<Vector3>,
     amps: Vec<f64>,
@@ -40,16 +40,19 @@ pub struct LM<B: Backend, T: Transducer> {
     k_max: usize,
     initial: Vec<f64>,
     backend: PhantomData<B>,
+    constraint: C,
 }
 
-impl<B: Backend, T: Transducer> LM<B, T> {
-    pub fn new(foci: Vec<Vector3>, amps: Vec<f64>) -> Self {
-        Self::with_param(foci, amps, 1e-8, 1e-8, 1e-3, 5, vec![])
+impl<B: Backend, T: Transducer, C: Constraint> LM<B, T, C> {
+    pub fn new(foci: Vec<Vector3>, amps: Vec<f64>, constraint: C) -> Self {
+        Self::with_param(foci, amps, constraint, 1e-8, 1e-8, 1e-3, 5, vec![])
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn with_param(
         foci: Vec<Vector3>,
         amps: Vec<f64>,
+        constraint: C,
         eps_1: f64,
         eps_2: f64,
         tau: f64,
@@ -67,6 +70,7 @@ impl<B: Backend, T: Transducer> LM<B, T> {
             k_max,
             initial,
             backend: PhantomData,
+            constraint,
         }
     }
 
@@ -112,7 +116,7 @@ impl<B: Backend, T: Transducer> LM<B, T> {
     }
 }
 
-impl<B: Backend, T: Transducer> IGain<T> for LM<B, T> {
+impl<B: Backend, T: Transducer, C: Constraint> IGain<T> for LM<B, T, C> {
     #[allow(clippy::many_single_char_names)]
     #[allow(clippy::unnecessary_wraps)]
     fn calc(&mut self, geometry: &Geometry<T>) -> Result<()> {
@@ -217,8 +221,10 @@ impl<B: Backend, T: Transducer> IGain<T> for LM<B, T> {
         }
 
         geometry.transducers().for_each(|tr| {
-            let phase = x[tr.id()] / (2.0 * PI);
-            self.props.drives.set_drive(tr, phase, 1.0);
+            let phase = x[tr.id()].argument() / (2.0 * PI) + 0.5;
+            let amp = self.constraint.convert(1.0, 1.0);
+            self.props.drives[tr.id()].amp = amp;
+            self.props.drives[tr.id()].phase = phase;
         });
 
         Ok(())

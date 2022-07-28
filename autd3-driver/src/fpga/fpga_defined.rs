@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 01/06/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -40,6 +40,13 @@ bitflags::bitflags! {
 }
 
 #[derive(Clone, Copy, Debug)]
+pub struct Drive {
+    pub phase: f64,
+    pub amp: f64,
+    pub cycle: u16,
+}
+
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct LegacyDrive {
     pub phase: u8,
@@ -47,9 +54,13 @@ pub struct LegacyDrive {
 }
 
 impl LegacyDrive {
-    pub fn set(&mut self, amp: f64, phase: f64) {
-        self.duty = (510.0 * amp.asin() / PI) as u8;
-        self.phase = (((phase * 256.0).round() as i32) & 0xFF) as u8;
+    pub fn to_phase(d: &Drive) -> u8 {
+        (((d.phase * 256.0).round() as i32) & 0xFF) as u8
+    }
+
+    pub fn set(&mut self, d: &Drive) {
+        self.duty = (510.0 * d.amp.asin() / PI).round() as u8;
+        self.phase = Self::to_phase(d);
     }
 }
 
@@ -60,8 +71,8 @@ pub struct Phase {
 }
 
 impl Phase {
-    pub fn set(&mut self, phase: f64, cycle: u16) {
-        self.phase = ((phase * cycle as f64).round() as i32).rem_euclid(cycle as i32) as _;
+    pub fn set(&mut self, d: &Drive) {
+        self.phase = ((d.phase * d.cycle as f64).round() as i32).rem_euclid(d.cycle as i32) as _;
     }
 }
 
@@ -72,27 +83,19 @@ pub struct Duty {
 }
 
 impl Duty {
-    pub fn set(&mut self, amp: f64, cycle: u16) {
-        self.duty = (cycle as f64 * amp.asin() / PI) as _;
+    pub fn set(&mut self, d: &Drive) {
+        self.duty = (d.cycle as f64 * d.amp.asin() / PI).round() as _;
     }
 }
 
+#[derive(Default)]
 #[repr(C)]
 pub struct FPGAInfo {
     info: u8,
 }
 
 impl FPGAInfo {
-    pub fn new() -> Self {
-        Self { info: 0 }
-    }
-    pub fn is_fan_running(&self) -> bool {
+    pub fn is_thermal_assert(&self) -> bool {
         (self.info & 0x01) != 0
-    }
-}
-
-impl Default for FPGAInfo {
-    fn default() -> Self {
-        Self::new()
     }
 }

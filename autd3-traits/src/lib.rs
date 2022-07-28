@@ -4,7 +4,7 @@
  * Created Date: 28/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -129,8 +129,7 @@ fn impl_gain_macro(ast: syn::DeriveInput) -> TokenStream {
                     return Ok(());
                 }
 
-                self.props
-                    .init(geometry.num_devices() * autd3_core::NUM_TRANS_IN_UNIT);
+                self.props.init(geometry);
 
                 autd3_core::gain::IGain::calc(self, geometry)?;
 
@@ -144,11 +143,11 @@ fn impl_gain_macro(ast: syn::DeriveInput) -> TokenStream {
                 self.build(geometry)
             }
 
-            fn drives(&self) -> &<T as Transducer>::D {
+            fn drives(&self) -> &[autd3_core::Drive] {
                 &self.props.drives
             }
 
-            fn take_drives(self) -> <T as Transducer>::D {
+            fn take_drives(self) -> Vec<autd3_core::Drive> {
                 self.props.drives
             }
 

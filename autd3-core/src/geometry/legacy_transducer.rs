@@ -4,7 +4,7 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 01/06/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -13,40 +13,9 @@
 
 use std::f64::consts::PI;
 
-use autd3_driver::{LegacyDrive, NUM_TRANS_IN_UNIT};
+use autd3_driver::Drive;
 
-use super::{DriveData, Transducer, Vector3};
-
-pub struct LegacyDriveData {
-    pub data: Vec<LegacyDrive>,
-}
-
-impl<T: Transducer> DriveData<T> for LegacyDriveData {
-    fn new() -> Self {
-        Self { data: vec![] }
-    }
-
-    fn init(&mut self, size: usize) {
-        self.data.resize(
-            size,
-            LegacyDrive {
-                phase: 0x00,
-                duty: 0x00,
-            },
-        )
-    }
-
-    fn set_drive(&mut self, tr: &T, phase: f64, amp: f64) {
-        self.data[tr.id()].set(amp, phase);
-    }
-
-    fn copy_from(&mut self, dev_id: usize, src: &Self) {
-        self.data[(dev_id * NUM_TRANS_IN_UNIT)..((dev_id + 1) * NUM_TRANS_IN_UNIT)]
-            .copy_from_slice(
-                &src.data[(dev_id * NUM_TRANS_IN_UNIT)..((dev_id + 1) * NUM_TRANS_IN_UNIT)],
-            );
-    }
-}
+use super::{Transducer, Vector3};
 
 pub struct LegacyTransducer {
     id: usize,
@@ -58,8 +27,6 @@ pub struct LegacyTransducer {
 }
 
 impl Transducer for LegacyTransducer {
-    type D = LegacyDriveData;
-
     fn new(
         id: usize,
         pos: Vector3,
@@ -133,10 +100,10 @@ impl Transducer for LegacyTransducer {
     fn pack_body(
         phase_sent: &mut bool,
         duty_sent: &mut bool,
-        drives: &Self::D,
+        drives: &[Drive],
         tx: &mut autd3_driver::TxDatagram,
     ) -> anyhow::Result<()> {
-        autd3_driver::normal_legacy_body(&drives.data, tx)?;
+        autd3_driver::normal_legacy_body(drives, tx)?;
         *phase_sent = true;
         *duty_sent = true;
         Ok(())

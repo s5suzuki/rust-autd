@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 01/06/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -14,7 +14,7 @@
 use crate::{
     fpga::{Duty, LegacyDrive, Phase},
     hardware::NUM_TRANS_IN_UNIT,
-    Mode, POINT_STM_FIXED_NUM_UNIT,
+    Drive, Mode, POINT_STM_FIXED_NUM_UNIT,
 };
 
 #[derive(Clone, Copy)]
@@ -184,18 +184,30 @@ pub struct GainSTMBodyBody {
     data: [u16; NUM_TRANS_IN_UNIT],
 }
 
-pub struct PhaseFull {
-    pub(crate) phase_0: u8,
-    pub(crate) phase_1: u8,
+pub struct LegacyPhaseFull {
+    phase_0: u8,
+    phase_1: u8,
 }
 
-pub struct PhaseHalf {
+impl LegacyPhaseFull {
+    pub fn set(&mut self, idx: usize, d: &Drive) {
+        let phase = LegacyDrive::to_phase(d);
+        match idx {
+            0 => self.phase_0 = phase,
+            1 => self.phase_1 = phase,
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub struct LegacyPhaseHalf {
     phase_01: u8,
     phase_23: u8,
 }
 
-impl PhaseHalf {
-    pub fn set(&mut self, idx: usize, phase: u8) {
+impl LegacyPhaseHalf {
+    pub fn set(&mut self, idx: usize, d: &Drive) {
+        let phase = LegacyDrive::to_phase(d);
         match idx {
             0 => self.phase_01 = (self.phase_01 & 0xF0) | ((phase >> 4) & 0x0F),
             1 => self.phase_01 = (self.phase_01 & 0x0F) | (phase & 0xF0),
@@ -223,11 +235,11 @@ impl GainSTMBodyBody {
         unsafe { std::mem::transmute(&mut self.data) }
     }
 
-    pub fn phase_full_mut(&mut self) -> &mut [PhaseFull; NUM_TRANS_IN_UNIT] {
+    pub fn legacy_phase_full_mut(&mut self) -> &mut [LegacyPhaseFull; NUM_TRANS_IN_UNIT] {
         unsafe { std::mem::transmute(&mut self.data) }
     }
 
-    pub fn phase_half_mut(&mut self) -> &mut [PhaseHalf; NUM_TRANS_IN_UNIT] {
+    pub fn legacy_phase_half_mut(&mut self) -> &mut [LegacyPhaseHalf; NUM_TRANS_IN_UNIT] {
         unsafe { std::mem::transmute(&mut self.data) }
     }
 }

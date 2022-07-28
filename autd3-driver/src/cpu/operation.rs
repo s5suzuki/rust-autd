@@ -4,7 +4,7 @@
  * Created Date: 02/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 10/06/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -16,12 +16,10 @@ use crate::{
         error::CPUError, CPUControlFlags, TxDatagram, MOD_BODY_DATA_SIZE, MOD_HEAD_DATA_SIZE,
         MSG_CLEAR, MSG_RD_CPU_VERSION, MSG_RD_FPGA_FUNCTION, MSG_RD_FPGA_VERSION,
     },
-    fpga::{
-        Duty, FPGAControlFlags, FPGAError, LegacyDrive, Phase, MOD_SAMPLING_FREQ_DIV_MIN,
-        SILENCER_CYCLE_MIN,
-    },
+    fpga::{FPGAControlFlags, FPGAError, MOD_SAMPLING_FREQ_DIV_MIN, SILENCER_CYCLE_MIN},
     hardware::NUM_TRANS_IN_UNIT,
-    Mode, SeqFocus, POINT_STM_BODY_DATA_SIZE, POINT_STM_HEAD_DATA_SIZE, STM_SAMPLING_FREQ_DIV_MIN,
+    Drive, Mode, SeqFocus, POINT_STM_BODY_DATA_SIZE, POINT_STM_HEAD_DATA_SIZE,
+    STM_SAMPLING_FREQ_DIV_MIN,
 };
 
 use anyhow::Result;
@@ -183,7 +181,7 @@ pub fn normal_legacy_head(tx: &mut TxDatagram) {
     tx.num_bodies = 0;
 }
 
-pub fn normal_legacy_body(drive: &[LegacyDrive], tx: &mut TxDatagram) -> Result<()> {
+pub fn normal_legacy_body(drive: &[Drive], tx: &mut TxDatagram) -> Result<()> {
     if drive.len() / NUM_TRANS_IN_UNIT != tx.body().len() {
         return Err(CPUError::DeviceNumberNotCorrect {
             a: tx.body().len(),
@@ -199,7 +197,12 @@ pub fn normal_legacy_body(drive: &[LegacyDrive], tx: &mut TxDatagram) -> Result<
     tx.body_mut()
         .iter_mut()
         .zip(drive.chunks(NUM_TRANS_IN_UNIT))
-        .for_each(|(d, s)| d.legacy_drives_mut().copy_from_slice(s));
+        .for_each(|(dd, ss)| {
+            dd.legacy_drives_mut()
+                .iter_mut()
+                .zip(ss.iter())
+                .for_each(|(d, s)| d.set(s))
+        });
 
     tx.num_bodies = tx.body().len();
 
@@ -218,7 +221,7 @@ pub fn normal_head(tx: &mut TxDatagram) {
     tx.num_bodies = 0;
 }
 
-pub fn normal_duty_body(drive: &[Duty], tx: &mut TxDatagram) -> Result<()> {
+pub fn normal_duty_body(drive: &[Drive], tx: &mut TxDatagram) -> Result<()> {
     if drive.len() / NUM_TRANS_IN_UNIT != tx.body().len() {
         return Err(CPUError::DeviceNumberNotCorrect {
             a: tx.body().len(),
@@ -235,14 +238,19 @@ pub fn normal_duty_body(drive: &[Duty], tx: &mut TxDatagram) -> Result<()> {
     tx.body_mut()
         .iter_mut()
         .zip(drive.chunks(NUM_TRANS_IN_UNIT))
-        .for_each(|(d, s)| d.duties_mut().copy_from_slice(s));
+        .for_each(|(dd, ss)| {
+            dd.duties_mut()
+                .iter_mut()
+                .zip(ss.iter())
+                .for_each(|(d, s)| d.set(s))
+        });
 
     tx.num_bodies = tx.body().len();
 
     Ok(())
 }
 
-pub fn normal_phase_body(drive: &[Phase], tx: &mut TxDatagram) -> Result<()> {
+pub fn normal_phase_body(drive: &[Drive], tx: &mut TxDatagram) -> Result<()> {
     if drive.len() / NUM_TRANS_IN_UNIT != tx.body().len() {
         return Err(CPUError::DeviceNumberNotCorrect {
             a: tx.body().len(),
@@ -259,7 +267,12 @@ pub fn normal_phase_body(drive: &[Phase], tx: &mut TxDatagram) -> Result<()> {
     tx.body_mut()
         .iter_mut()
         .zip(drive.chunks(NUM_TRANS_IN_UNIT))
-        .for_each(|(d, s)| d.phases_mut().copy_from_slice(s));
+        .for_each(|(dd, ss)| {
+            dd.phases_mut()
+                .iter_mut()
+                .zip(ss.iter())
+                .for_each(|(d, s)| d.set(s))
+        });
 
     tx.num_bodies = tx.body().len();
 
@@ -308,10 +321,6 @@ pub fn point_stm_body(
         }
     }
 
-    tx.header_mut()
-        .cpu_flag
-        .set(CPUControlFlags::WRITE_BODY, true);
-
     if is_first_frame {
         if freq_div < STM_SAMPLING_FREQ_DIV_MIN {
             return Err(FPGAError::STMFreqDivOutOfRange(freq_div).into());
@@ -332,6 +341,10 @@ pub fn point_stm_body(
             d.point_stm_body_mut().set_points(s);
         });
     }
+
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::WRITE_BODY, true);
 
     if is_last_frame {
         tx.header_mut().cpu_flag.set(CPUControlFlags::STM_END, true);
@@ -362,21 +375,13 @@ pub fn gain_stm_legacy_head(tx: &mut TxDatagram) {
 }
 
 pub fn gain_stm_legacy_body(
-    gain: &[&[LegacyDrive]],
+    drives: &[&[Drive]],
     is_first_frame: bool,
     freq_div: u32,
     is_last_frame: bool,
     mode: Mode,
     tx: &mut TxDatagram,
 ) -> Result<()> {
-    if gain.is_empty() && !is_first_frame {
-        return Ok(());
-    }
-
-    tx.header_mut()
-        .cpu_flag
-        .set(CPUControlFlags::WRITE_BODY, true);
-
     if is_first_frame {
         if freq_div < STM_SAMPLING_FREQ_DIV_MIN {
             return Err(FPGAError::STMFreqDivOutOfRange(freq_div).into());
@@ -393,91 +398,85 @@ pub fn gain_stm_legacy_body(
             Mode::PhaseDutyFull => {
                 tx.body_mut()
                     .iter_mut()
-                    .zip(gain[0].chunks(NUM_TRANS_IN_UNIT))
-                    .for_each(|(d, s)| {
-                        d.gain_stm_body_mut()
+                    .zip(drives[0].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(dd, ss)| {
+                        dd.gain_stm_body_mut()
                             .legacy_drives_mut()
-                            .clone_from_slice(s);
+                            .iter_mut()
+                            .zip(ss.iter())
+                            .for_each(|(d, s)| d.set(s))
                     });
             }
             Mode::PhaseFull => {
                 tx.body_mut()
                     .iter_mut()
-                    .zip(gain[0].chunks(NUM_TRANS_IN_UNIT))
-                    .for_each(|(d, s)| {
-                        d.gain_stm_body_mut()
-                            .phase_full_mut()
+                    .zip(drives[0].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(dd, ss)| {
+                        dd.gain_stm_body_mut()
+                            .legacy_phase_full_mut()
                             .iter_mut()
-                            .zip(s.iter())
-                            .for_each(|(dd, ss)| {
-                                dd.phase_0 = ss.phase;
-                            })
+                            .zip(ss.iter())
+                            .for_each(|(d, s)| d.set(0, s))
                     });
                 tx.body_mut()
                     .iter_mut()
-                    .zip(gain[1].chunks(NUM_TRANS_IN_UNIT))
-                    .for_each(|(d, s)| {
-                        d.gain_stm_body_mut()
-                            .phase_full_mut()
+                    .zip(drives[1].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(dd, ss)| {
+                        dd.gain_stm_body_mut()
+                            .legacy_phase_full_mut()
                             .iter_mut()
-                            .zip(s.iter())
-                            .for_each(|(dd, ss)| {
-                                dd.phase_1 = ss.phase;
-                            })
+                            .zip(ss.iter())
+                            .for_each(|(d, s)| d.set(1, s))
                     });
             }
             Mode::PhaseHalf => {
                 tx.body_mut()
                     .iter_mut()
-                    .zip(gain[0].chunks(NUM_TRANS_IN_UNIT))
-                    .for_each(|(d, s)| {
-                        d.gain_stm_body_mut()
-                            .phase_half_mut()
+                    .zip(drives[0].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(dd, ss)| {
+                        dd.gain_stm_body_mut()
+                            .legacy_phase_half_mut()
                             .iter_mut()
-                            .zip(s.iter())
-                            .for_each(|(dd, ss)| {
-                                dd.set(0, ss.phase);
-                            })
+                            .zip(ss.iter())
+                            .for_each(|(d, s)| d.set(0, s))
                     });
                 tx.body_mut()
                     .iter_mut()
-                    .zip(gain[1].chunks(NUM_TRANS_IN_UNIT))
-                    .for_each(|(d, s)| {
-                        d.gain_stm_body_mut()
-                            .phase_half_mut()
+                    .zip(drives[1].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(dd, ss)| {
+                        dd.gain_stm_body_mut()
+                            .legacy_phase_half_mut()
                             .iter_mut()
-                            .zip(s.iter())
-                            .for_each(|(dd, ss)| {
-                                dd.set(1, ss.phase);
-                            })
+                            .zip(ss.iter())
+                            .for_each(|(d, s)| d.set(1, s))
                     });
                 tx.body_mut()
                     .iter_mut()
-                    .zip(gain[2].chunks(NUM_TRANS_IN_UNIT))
-                    .for_each(|(d, s)| {
-                        d.gain_stm_body_mut()
-                            .phase_half_mut()
+                    .zip(drives[2].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(dd, ss)| {
+                        dd.gain_stm_body_mut()
+                            .legacy_phase_half_mut()
                             .iter_mut()
-                            .zip(s.iter())
-                            .for_each(|(dd, ss)| {
-                                dd.set(2, ss.phase);
-                            })
+                            .zip(ss.iter())
+                            .for_each(|(d, s)| d.set(2, s))
                     });
                 tx.body_mut()
                     .iter_mut()
-                    .zip(gain[3].chunks(NUM_TRANS_IN_UNIT))
-                    .for_each(|(d, s)| {
-                        d.gain_stm_body_mut()
-                            .phase_half_mut()
+                    .zip(drives[3].chunks(NUM_TRANS_IN_UNIT))
+                    .for_each(|(dd, ss)| {
+                        dd.gain_stm_body_mut()
+                            .legacy_phase_half_mut()
                             .iter_mut()
-                            .zip(s.iter())
-                            .for_each(|(dd, ss)| {
-                                dd.set(3, ss.phase);
-                            })
+                            .zip(ss.iter())
+                            .for_each(|(d, s)| d.set(2, s))
                     });
             }
         }
     }
+
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::WRITE_BODY, true);
 
     if is_last_frame {
         tx.header_mut().cpu_flag.set(CPUControlFlags::STM_END, true);
@@ -508,24 +507,16 @@ pub fn gain_stm_normal_head(tx: &mut TxDatagram) {
 }
 
 pub fn gain_stm_normal_phase_body(
-    phase: &[Phase],
+    drives: &[Drive],
     is_first_frame: bool,
     freq_div: u32,
     mode: Mode,
     is_last_frame: bool,
     tx: &mut TxDatagram,
 ) -> Result<()> {
-    if phase.is_empty() && !is_first_frame {
-        return Ok(());
-    }
-
     if mode == Mode::PhaseHalf {
         return Err(CPUError::PhaseHalfNotSupported.into());
     }
-
-    tx.header_mut()
-        .cpu_flag
-        .set(CPUControlFlags::WRITE_BODY, true);
 
     tx.header_mut().cpu_flag.remove(CPUControlFlags::IS_DUTY);
 
@@ -543,56 +534,50 @@ pub fn gain_stm_normal_phase_body(
     } else {
         tx.body_mut()
             .iter_mut()
-            .zip(phase.chunks(NUM_TRANS_IN_UNIT))
-            .for_each(|(d, s)| {
-                d.gain_stm_body_mut().phases_mut().clone_from_slice(s);
+            .zip(drives.chunks(NUM_TRANS_IN_UNIT))
+            .for_each(|(dd, ss)| {
+                dd.gain_stm_body_mut()
+                    .phases_mut()
+                    .iter_mut()
+                    .zip(ss.iter())
+                    .for_each(|(d, s)| d.set(s));
             });
-    }
-
-    tx.num_bodies = tx.body().len();
-
-    if is_last_frame {
-        tx.header_mut().cpu_flag.set(CPUControlFlags::STM_END, true);
-    }
-
-    Ok(())
-}
-
-pub fn gain_stm_normal_duty_body(
-    duty: &[Duty],
-    is_first_frame: bool,
-    freq_div: u32,
-    is_last_frame: bool,
-    tx: &mut TxDatagram,
-) -> Result<()> {
-    if duty.is_empty() && !is_first_frame {
-        return Ok(());
     }
 
     tx.header_mut()
         .cpu_flag
         .set(CPUControlFlags::WRITE_BODY, true);
 
+    if is_last_frame {
+        tx.header_mut().cpu_flag.set(CPUControlFlags::STM_END, true);
+    }
+
+    tx.num_bodies = tx.body().len();
+
+    Ok(())
+}
+
+pub fn gain_stm_normal_duty_body(
+    drives: &[Drive],
+    is_last_frame: bool,
+    tx: &mut TxDatagram,
+) -> Result<()> {
     tx.header_mut().cpu_flag.set(CPUControlFlags::IS_DUTY, true);
 
-    if is_first_frame {
-        if freq_div < STM_SAMPLING_FREQ_DIV_MIN {
-            return Err(FPGAError::STMFreqDivOutOfRange(freq_div).into());
-        }
-        tx.header_mut()
-            .cpu_flag
-            .set(CPUControlFlags::STM_BEGIN, true);
-        tx.body_mut().iter_mut().for_each(|d| {
-            d.gain_stm_head_mut().set_freq_div(freq_div);
+    tx.body_mut()
+        .iter_mut()
+        .zip(drives.chunks(NUM_TRANS_IN_UNIT))
+        .for_each(|(dd, ss)| {
+            dd.gain_stm_body_mut()
+                .duties_mut()
+                .iter_mut()
+                .zip(ss.iter())
+                .for_each(|(d, s)| d.set(s))
         });
-    } else {
-        tx.body_mut()
-            .iter_mut()
-            .zip(duty.chunks(NUM_TRANS_IN_UNIT))
-            .for_each(|(d, s)| {
-                d.gain_stm_body_mut().duties_mut().clone_from_slice(s);
-            });
-    }
+
+    tx.header_mut()
+        .cpu_flag
+        .set(CPUControlFlags::WRITE_BODY, true);
 
     if is_last_frame {
         tx.header_mut().cpu_flag.set(CPUControlFlags::STM_END, true);

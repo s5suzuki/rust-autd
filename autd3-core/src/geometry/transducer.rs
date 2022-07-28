@@ -4,7 +4,7 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 01/06/2022
+ * Last Modified: 28/07/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -13,20 +13,11 @@
 
 use anyhow::Result;
 
-use autd3_driver::TxDatagram;
+use autd3_driver::{Drive, TxDatagram};
 
 use super::Vector3;
 
-pub trait DriveData<T> {
-    fn new() -> Self;
-    fn init(&mut self, size: usize);
-    fn set_drive(&mut self, tr: &T, phase: f64, amp: f64);
-    fn copy_from(&mut self, dev_id: usize, src: &Self);
-}
-
 pub trait Transducer: Sized {
-    type D: DriveData<Self>;
-
     fn new(
         id: usize,
         pos: Vector3,
@@ -50,7 +41,7 @@ pub trait Transducer: Sized {
     fn pack_body(
         phase_sent: &mut bool,
         duty_sent: &mut bool,
-        drives: &Self::D,
+        drives: &[Drive],
         tx: &mut TxDatagram,
     ) -> Result<()>;
 }
