@@ -186,6 +186,7 @@ impl<F: Fn(&str) + Send, W: Waiter> EcatThreadHandler<F, W> {
                 W::timed_wait(&ts);
 
                 if ec_slave[0].state == ec_state_EC_STATE_SAFE_OP as _ {
+                    eprintln!("WARN: SAFE_OP");
                     ec_slave[0].state = ec_state_EC_STATE_OPERATIONAL as _;
                     ec_writestate(0);
                 }
@@ -201,7 +202,7 @@ impl<F: Fn(&str) + Send, W: Waiter> EcatThreadHandler<F, W> {
                     return;
                 }
 
-                self.sender.send(self.io_map.input()).unwrap();
+                let _ = self.sender.send(self.io_map.input());
 
                 ec_sync(ec_DCtime, self.cycletime, &mut toff);
             }
