@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 28/07/2022
+ * Last Modified: 08/08/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -75,7 +75,7 @@ impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Fil
                 break;
             }
             std::thread::sleep(std::time::Duration::from_micros(
-                self.cnt.send_interval as u64 * autd3_core::EC_SYNC0_CYCLE_TIME_MICRO_SEC as u64,
+                self.cnt.send_interval as u64 * autd3_core::EC_CYCLE_TIME_BASE_MICRO_SEC as u64,
             ));
         }
         self.sent = true;
@@ -111,7 +111,7 @@ impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>> Sender<'a, 'b, L, T, S, Emp
                 break;
             }
             std::thread::sleep(std::time::Duration::from_micros(
-                self.cnt.send_interval as u64 * autd3_core::EC_SYNC0_CYCLE_TIME_MICRO_SEC as u64,
+                self.cnt.send_interval as u64 * autd3_core::EC_CYCLE_TIME_BASE_MICRO_SEC as u64,
             ));
         }
         self.sent = true;
@@ -156,8 +156,7 @@ impl<'a, 'b, L: Link, T: Transducer, S: Sendable<T>, H, B> Drop for Sender<'a, '
                     break;
                 }
                 std::thread::sleep(std::time::Duration::from_micros(
-                    self.cnt.send_interval as u64
-                        * autd3_core::EC_SYNC0_CYCLE_TIME_MICRO_SEC as u64,
+                    self.cnt.send_interval as u64 * autd3_core::EC_CYCLE_TIME_BASE_MICRO_SEC as u64,
                 ));
             }
         }
@@ -297,7 +296,7 @@ impl<L: Link, T: Transducer> Controller<L, T> {
 
     fn wait_msg_processed(&mut self, max_trial: usize) -> Result<usize> {
         let msg_id = self.tx_buf.header().msg_id;
-        let wait = self.send_interval as u64 * autd3_core::EC_SYNC0_CYCLE_TIME_MICRO_SEC as u64;
+        let wait = self.send_interval as u64 * autd3_core::EC_CYCLE_TIME_BASE_MICRO_SEC as u64;
         let mut i = 0;
         for _ in 0..max_trial {
             if self.link.receive(&mut self.rx_buf)? && is_msg_processed(msg_id, &self.rx_buf) {
