@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 28/07/2022
+ * Last Modified: 08/08/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -26,7 +26,7 @@ use crossbeam_channel::{bounded, Sender};
 use libc::c_void;
 
 use autd3_core::{
-    error::AUTDInternalError, link::Link, RxDatagram, TxDatagram, EC_SYNC0_CYCLE_TIME_NANO_SEC,
+    error::AUTDInternalError, link::Link, RxDatagram, TxDatagram, EC_CYCLE_TIME_BASE_NANO_SEC,
 };
 
 use crate::{
@@ -34,7 +34,7 @@ use crate::{
     error::SOEMError,
     iomap::IOMap,
     native_methods::*,
-    Config,
+    Config, SyncMode,
 };
 
 const SEND_BUF_SIZE: usize = 32;
@@ -51,11 +51,13 @@ pub struct SOEM<F: Fn(&str) + Send> {
     thread_running: Arc<AtomicBool>,
     rx: Arc<Mutex<RxDatagram>>,
     ec_sync0_cycle_time_ns: u32,
+    ec_send_cycle_time_ns: u32,
 }
 
 impl<F: Fn(&str) + Send> SOEM<F> {
     pub fn new(ifname: &str, dev_num: u16, config: Config, error_handle: F) -> Self {
-        let ec_sync0_cycle_time_ns = EC_SYNC0_CYCLE_TIME_NANO_SEC * config.cycle_ticks as u32;
+        let ec_send_cycle_time_ns = EC_CYCLE_TIME_BASE_NANO_SEC * config.send_cycle as u32;
+        let ec_sync0_cycle_time_ns = EC_CYCLE_TIME_BASE_NANO_SEC * config.sync0_cycle as u32;
         Self {
             dev_num,
             ecatth_handle: None,
@@ -68,6 +70,7 @@ impl<F: Fn(&str) + Send> SOEM<F> {
             thread_running: Arc::new(AtomicBool::new(false)),
             config,
             ec_sync0_cycle_time_ns,
+            ec_send_cycle_time_ns,
         }
     }
 }
@@ -114,9 +117,11 @@ impl<F: 'static + Fn(&str) + Send> Link for SOEM<F> {
 
             ecx_context.userdata = &mut self.ec_sync0_cycle_time_ns as *mut _ as *mut c_void;
 
-            (1..=ec_slavecount as usize).for_each(|i| {
-                ec_slave[i].PO2SOconfigx = Some(dc_config);
-            });
+            if self.config.sync_mode == SyncMode::DC {
+                (1..=ec_slavecount as usize).for_each(|i| {
+                    ec_slave[i].PO2SOconfigx = Some(dc_config);
+                });
+            }
 
             ec_configdc();
 
@@ -135,7 +140,7 @@ impl<F: 'static + Fn(&str) + Send> Link for SOEM<F> {
             ec_writestate(0);
 
             let expected_wkc = (ec_group[0].outputsWKC * 2 + ec_group[0].inputsWKC) as i32;
-            let cycletime = self.ec_sync0_cycle_time_ns as i64;
+            let cycletime = self.ec_send_cycle_time_ns as i64;
             let error_handle = self.error_handle.take();
             let thread_running = self.thread_running.clone();
             let is_high_precision = self.config.high_precision_timer;
@@ -176,6 +181,12 @@ impl<F: 'static + Fn(&str) + Send> Link for SOEM<F> {
 
             if ec_slave[0].state != ec_state_EC_STATE_OPERATIONAL as u16 {
                 return Err(SOEMError::NotResponding.into());
+            }
+
+            if self.config.sync_mode == SyncMode::FreeRun {
+                (1..=ec_slavecount as u16).for_each(|i| {
+                    dc_config(&mut ecx_context as *mut _, i);
+                });
             }
         }
 

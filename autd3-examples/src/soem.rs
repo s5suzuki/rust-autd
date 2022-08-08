@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 28/07/2022
+ * Last Modified: 08/08/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -62,8 +62,8 @@ fn main() -> Result<()> {
 
     let ifname = get_adapter();
     let config = Config {
-        cycle_ticks: 2,
         high_precision_timer: true,
+        ..Config::default()
     };
     let link = SOEM::new(&ifname, geometry.num_devices() as u16, config, |msg| {
         eprintln!("unrecoverable error occurred: {}", msg);
