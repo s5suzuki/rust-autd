@@ -4,14 +4,18 @@
  * Created Date: 28/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 10/06/2022
+ * Last Modified: 14/08/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
  *
  */
 
-use autd3_core::{link::Link, CPUControlFlags, RxDatagram, TxDatagram};
+use autd3_core::{
+    geometry::{Geometry, Transducer},
+    link::Link,
+    CPUControlFlags, RxDatagram, TxDatagram,
+};
 use autd3_firmware_emulator::Emulator;
 
 pub struct Debug {
@@ -19,18 +23,18 @@ pub struct Debug {
 }
 
 impl Debug {
-    pub fn new(n: usize) -> Self {
+    pub fn new() -> Self {
         Self {
-            emulator: Emulator::new(n),
+            emulator: Emulator::new(),
         }
     }
 }
 
 impl Link for Debug {
-    fn open(&mut self) -> anyhow::Result<()> {
+    fn open<T: Transducer>(&mut self, geometry: &Geometry<T>) -> anyhow::Result<()> {
         log::info!("Open Debug link");
 
-        self.emulator.init();
+        self.emulator.init(geometry.num_devices());
         log::info!("Initialize emulator");
 
         Ok(())
@@ -136,5 +140,11 @@ impl Link for Debug {
 
     fn is_open(&self) -> bool {
         true
+    }
+}
+
+impl Default for Debug {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -4,7 +4,7 @@
  * Created Date: 06/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 31/05/2022
+ * Last Modified: 14/08/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -23,13 +23,14 @@ pub struct Emulator {
 }
 
 impl Emulator {
-    pub fn new(n: usize) -> Self {
-        let mut devices = Vec::with_capacity(n);
-        (0..n).for_each(|i| devices.push(CPUEmulator::new(i)));
-        Self { devices }
+    pub fn new() -> Self {
+        Self { devices: vec![] }
     }
 
-    pub fn init(&mut self) {
+    pub fn init(&mut self, n: usize) {
+        self.devices.clear();
+        self.devices.reserve(n);
+        (0..n).for_each(|i| self.devices.push(CPUEmulator::new(i)));
         self.devices.iter_mut().for_each(|cpu| cpu.init());
     }
 
@@ -60,5 +61,11 @@ impl Emulator {
 
     pub fn fpga(&self, i: usize) -> &FPGAEmulator {
         &self.devices[i].fpga
+    }
+}
+
+impl Default for Emulator {
+    fn default() -> Self {
+        Self::new()
     }
 }

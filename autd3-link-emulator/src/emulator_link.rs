@@ -4,7 +4,7 @@
  * Created Date: 28/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 10/06/2022
+ * Last Modified: 14/08/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -23,12 +23,21 @@ use autd3_core::{
 pub struct Emulator {
     port: u16,
     socket: Option<UdpSocket>,
-    geometry_buf: TxDatagram,
     last_msg_id: u8,
 }
 
 impl Emulator {
-    pub fn new<T: Transducer>(port: u16, geometry: &Geometry<T>) -> Self {
+    pub fn new(port: u16) -> Self {
+        Self {
+            port,
+            socket: None,
+            last_msg_id: 0,
+        }
+    }
+}
+
+impl Link for Emulator {
+    fn open<T: Transducer>(&mut self, geometry: &Geometry<T>) -> anyhow::Result<()> {
         let mut geometry_buf = TxDatagram::new(geometry.num_devices());
         geometry_buf.num_bodies = geometry.num_devices();
 
@@ -61,21 +70,10 @@ impl Emulator {
                 }
             });
 
-        Self {
-            port,
-            socket: None,
-            geometry_buf,
-            last_msg_id: 0,
-        }
-    }
-}
-
-impl Link for Emulator {
-    fn open(&mut self) -> anyhow::Result<()> {
         let socket = UdpSocket::bind("0.0.0.0:8080")?;
         let remote_addr = format!("127.0.0.1:{}", self.port);
         socket.connect(remote_addr)?;
-        socket.send(self.geometry_buf.data())?;
+        socket.send(geometry_buf.data())?;
         self.socket = Some(socket);
         Ok(())
     }

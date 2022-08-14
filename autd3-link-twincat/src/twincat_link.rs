@@ -4,7 +4,7 @@
  * Created Date: 27/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 10/06/2022
+ * Last Modified: 14/08/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Shun Suzuki. All rights reserved.
@@ -14,7 +14,11 @@
 use anyhow::Result;
 use libc::c_void;
 
-use autd3_core::{link::Link, RxDatagram, RxMessage, TxDatagram};
+use autd3_core::{
+    geometry::{Geometry, Transducer},
+    link::Link,
+    RxDatagram, RxMessage, TxDatagram,
+};
 
 use crate::{error::AdsError, native_methods::*};
 
@@ -50,7 +54,7 @@ impl Default for TwinCAT {
 }
 
 impl Link for TwinCAT {
-    fn open(&mut self) -> Result<()> {
+    fn open<T: Transducer>(&mut self, _geometry: &Geometry<T>) -> anyhow::Result<()> {
         unsafe {
             let port = (TC_ADS.tc_ads_port_open)();
             if port == 0 {

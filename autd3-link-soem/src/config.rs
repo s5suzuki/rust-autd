@@ -4,7 +4,7 @@
  * Created Date: 04/05/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 08/08/2022
+ * Last Modified: 14/08/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -18,6 +18,7 @@ pub struct Config {
     pub send_cycle: u16,
     pub high_precision_timer: bool,
     pub sync_mode: SyncMode,
+    pub ifname: String,
 }
 
 impl Config {
@@ -33,6 +34,7 @@ impl Default for Config {
             send_cycle: 1,
             high_precision_timer: false,
             sync_mode: SyncMode::DC,
+            ifname: String::new(),
         }
     }
 }

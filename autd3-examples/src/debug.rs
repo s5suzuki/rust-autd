@@ -4,7 +4,7 @@
  * Created Date: 28/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 01/06/2022
+ * Last Modified: 14/08/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -44,7 +44,7 @@ fn main() -> Result<()> {
     geometry.add_device(Vector3::zeros(), Vector3::zeros());
     // geometry.add_device(Vector3::zeros(), Vector3::zeros());
 
-    let link = Debug::new(geometry.num_devices());
+    let link = Debug::new();
 
     let autd = Controller::open(geometry, link).expect("Failed to open");
 

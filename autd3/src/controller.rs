@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 08/08/2022
+ * Last Modified: 14/08/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -177,7 +177,7 @@ pub struct Controller<L: Link, T: Transducer> {
 impl<L: Link, T: Transducer> Controller<L, T> {
     pub fn open(geometry: Geometry<T>, link: L) -> Result<Controller<L, T>> {
         let mut link = link;
-        link.open()?;
+        link.open(&geometry)?;
         let num_devices = geometry.num_devices();
         Ok(Controller {
             link,

@@ -4,7 +4,7 @@
  * Created Date: 27/04/2022
  * Author: Shun Suzuki
  * -----
- * Last Modified: 08/08/2022
+ * Last Modified: 14/08/2022
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2022 Shun Suzuki. All rights reserved.
@@ -26,7 +26,10 @@ use crossbeam_channel::{bounded, Sender};
 use libc::c_void;
 
 use autd3_core::{
-    error::AUTDInternalError, link::Link, RxDatagram, TxDatagram, EC_CYCLE_TIME_BASE_NANO_SEC,
+    error::AUTDInternalError,
+    geometry::{Geometry, Transducer},
+    link::Link,
+    RxDatagram, TxDatagram, EC_CYCLE_TIME_BASE_NANO_SEC,
 };
 
 use crate::{
@@ -34,7 +37,7 @@ use crate::{
     error::SOEMError,
     iomap::IOMap,
     native_methods::*,
-    Config, SyncMode,
+    Config, EthernetAdapters, SyncMode,
 };
 
 const SEND_BUF_SIZE: usize = 32;
@@ -43,9 +46,7 @@ pub struct SOEM<F: Fn(&str) + Send> {
     ecatth_handle: Option<JoinHandle<()>>,
     error_handle: Option<F>,
     is_open: bool,
-    ifname: std::ffi::CString,
     config: Config,
-    dev_num: u16,
     sender: Option<Sender<TxDatagram>>,
     recv_thread: Option<JoinHandle<()>>,
     thread_running: Arc<AtomicBool>,
@@ -55,23 +56,53 @@ pub struct SOEM<F: Fn(&str) + Send> {
 }
 
 impl<F: Fn(&str) + Send> SOEM<F> {
-    pub fn new(ifname: &str, dev_num: u16, config: Config, error_handle: F) -> Self {
+    pub fn new(config: Config, error_handle: F) -> Self {
         let ec_send_cycle_time_ns = EC_CYCLE_TIME_BASE_NANO_SEC * config.send_cycle as u32;
         let ec_sync0_cycle_time_ns = EC_CYCLE_TIME_BASE_NANO_SEC * config.sync0_cycle as u32;
         Self {
-            dev_num,
             ecatth_handle: None,
             error_handle: Some(error_handle),
             is_open: false,
-            ifname: std::ffi::CString::new(ifname.to_string()).unwrap(),
             sender: None,
-            rx: Arc::new(Mutex::new(RxDatagram::new(dev_num as _))),
+            rx: Arc::new(Mutex::new(RxDatagram::new(0))),
             recv_thread: None,
             thread_running: Arc::new(AtomicBool::new(false)),
             config,
             ec_sync0_cycle_time_ns,
             ec_send_cycle_time_ns,
         }
+    }
+}
+
+fn lookup_autd() -> anyhow::Result<String> {
+    let adapters: EthernetAdapters = Default::default();
+
+    if let Some(adapter) = adapters.into_iter().find(|adapter| unsafe {
+        let ifname = std::ffi::CString::new(adapter.name.to_owned()).unwrap();
+        if ec_init(ifname.as_ptr()) <= 0 {
+            return false;
+        }
+        let wc = ec_config_init(0);
+        if wc <= 0 {
+            return false;
+        }
+        let slave_name = String::from_utf8(
+            ec_slave[1]
+                .name
+                .iter()
+                .take_while(|&&c| c != 0)
+                .map(|&c| c as u8)
+                .collect(),
+        )
+        .unwrap();
+        if slave_name == "AUTD" {
+            return true;
+        }
+        false
+    }) {
+        Ok(adapter.name.to_owned())
+    } else {
+        Err(SOEMError::NoDeviceFound.into())
     }
 }
 
@@ -82,8 +113,12 @@ unsafe extern "C" fn dc_config(context: *mut ecx_contextt, slave: u16) -> i32 {
 }
 
 impl<F: 'static + Fn(&str) + Send> Link for SOEM<F> {
-    fn open(&mut self) -> Result<()> {
-        let mut io_map = Box::new(IOMap::new(self.dev_num as _));
+    fn open<T: Transducer>(&mut self, geometry: &Geometry<T>) -> anyhow::Result<()> {
+        let dev_num = geometry.num_devices() as u16;
+
+        self.rx = Arc::new(Mutex::new(RxDatagram::new(geometry.num_devices())));
+
+        let mut io_map = Box::new(IOMap::new(dev_num as _));
 
         let (tx_sender, tx_receiver) = bounded(SEND_BUF_SIZE);
         let (rx_sender, rx_receiver) = bounded(SEND_BUF_SIZE);
@@ -99,20 +134,26 @@ impl<F: 'static + Fn(&str) + Send> Link for SOEM<F> {
             }
         }));
 
+        let ifname = if self.config.ifname.is_empty() {
+            lookup_autd()?
+        } else {
+            self.config.ifname.clone()
+        };
+        let ifname = std::ffi::CString::new(ifname).unwrap();
+
         unsafe {
-            if ec_init(self.ifname.as_ptr()) <= 0 {
-                return Err(SOEMError::NoSocketConnection(
-                    self.ifname.to_str().unwrap().to_string(),
-                )
-                .into());
+            if ec_init(ifname.as_ptr()) <= 0 {
+                return Err(
+                    SOEMError::NoSocketConnection(ifname.to_str().unwrap().to_string()).into(),
+                );
             }
 
             let wc = ec_config_init(0);
             if wc <= 0 {
-                return Err(SOEMError::SlaveNotFound(0, self.dev_num).into());
+                return Err(SOEMError::SlaveNotFound(0, dev_num).into());
             }
-            if wc as u16 != self.dev_num {
-                return Err(SOEMError::SlaveNotFound(wc as u16, self.dev_num).into());
+            if wc as u16 != dev_num {
+                return Err(SOEMError::SlaveNotFound(wc as u16, dev_num).into());
             }
 
             ecx_context.userdata = &mut self.ec_sync0_cycle_time_ns as *mut _ as *mut c_void;
