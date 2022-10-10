@@ -1,3 +1,7 @@
+# DEPRECATED 
+
+## This repository has been merged into [autd3](https://github.com/shinolab/autd3) repository from v2.4.1.
+
 ![build](https://github.com/shinolab/rust-autd/workflows/build/badge.svg)
 
 # AUTD3 library for Rust
